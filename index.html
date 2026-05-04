@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HikeRight – Is It Safe to Hike?</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <span class="logo-icon">⛰️</span>
+      <span class="logo-text">HikeRight</span>
+    </div>
+    <p class="tagline">Check conditions before you hit the trail.</p>
+  </header>
+
+  <main>
+    <div class="search-card">
+      <h2>Where are you hiking?</h2>
+      <div class="search-row">
+        <input
+          type="text"
+          id="locationInput"
+          placeholder="e.g. Mount Rainier, Appalachian Trail, Rocky Mountain National Park..."
+          autocomplete="off"
+        />
+        <button id="checkBtn">Check It</button>
+      </div>
+      <p class="hint">We'll check real-time weather and tell you if it's safe.</p>
+    </div>
+
+    <div id="loadingState" class="loading hidden">
+      <div class="spinner"></div>
+      <p>Fetching conditions...</p>
+    </div>
+
+    <div id="errorState" class="error-card hidden">
+      <span class="error-icon">⚠️</span>
+      <p id="errorMsg">Couldn't find that location. Try being more specific.</p>
+    </div>
+
+    <div id="resultCard" class="result-card hidden">
+      <div class="result-header">
+        <div class="location-info">
+          <h2 id="locationName">—</h2>
+          <p id="locationSub">—</p>
+        </div>
+        <div id="verdictBadge" class="verdict-badge">—</div>
+      </div>
+
+      <div id="verdictMessage" class="verdict-message">—</div>
+
+      <div class="weather-grid">
+        <div class="weather-item">
+          <span class="w-icon">🌡️</span>
+          <span class="w-label">Temperature</span>
+          <span class="w-value" id="wTemp">—</span>
+        </div>
+        <div class="weather-item">
+          <span class="w-icon">💧</span>
+          <span class="w-label">Precipitation</span>
+          <span class="w-value" id="wPrecip">—</span>
+        </div>
+        <div class="weather-item">
+          <span class="w-icon">💨</span>
+          <span class="w-label">Wind Speed</span>
+          <span class="w-value" id="wWind">—</span>
+        </div>
+        <div class="weather-item">
+          <span class="w-icon">👁️</span>
+          <span class="w-label">Conditions</span>
+          <span class="w-value" id="wCondition">—</span>
+        </div>
+        <div class="weather-item">
+          <span class="w-icon">🌅</span>
+          <span class="w-label">Sunrise</span>
+          <span class="w-value" id="wSunrise">—</span>
+        </div>
+        <div class="weather-item">
+          <span class="w-icon">🌇</span>
+          <span class="w-label">Sunset</span>
+          <span class="w-value" id="wSunset">—</span>
+        </div>
+      </div>
+
+      <div id="warningsList" class="warnings-list hidden">
+        <h3>⚠️ Warnings</h3>
+        <ul id="warningsUl"></ul>
+      </div>
+
+      <div id="tipsList" class="tips-list">
+        <h3>💡 Tips for this hike</h3>
+        <ul id="tipsUl"></ul>
+      </div>
+
+      <p class="elevation-note" id="elevationNote"></p>
+    </div>
+  </main>
+
+  <footer>
+    <p>HikeRight uses live weather data. Always check local trail conditions before hiking.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
