@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HikeRight - Date Planner</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="planner">
+  <header>
+    <div class="logo">
+      <span class="logo-icon">⛰️</span>
+      <span class="logo-text">HikeRight</span>
+    </div>
+    <p class="tagline">Choose your hike date with safety guidance.</p>
+  </header>
+
+  <main class="results-main">
+    <a class="back-link" href="result.html">← Back To Results</a>
+
+    <div id="plannerError" class="error-card hidden">
+      <span class="error-icon">⚠️</span>
+      <p id="plannerErrorText">No result data found. Go back and check a location first.</p>
+    </div>
+
+    <section id="plannerCard" class="result-card hidden">
+      <div class="result-top">
+        <div class="location-info">
+          <div class="loc-pin">📅</div>
+          <div>
+            <h2 id="plannerLocationName">Hike Date Planner</h2>
+            <p id="plannerLocationSub">Choose a date and review warnings.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="planner-calendar-wrap">
+        <h3 class="chart-title">Custom Calendar (Forecast Window)</h3>
+        <p class="planner-sub">Pick one of the forecast dates below for the most accurate warning.</p>
+        <div id="plannerCalendarGrid" class="planner-calendar-grid"></div>
+      </div>
+
+      <div class="date-row planner-date-row">
+        <label for="plannerDateInput">Or choose any date</label>
+        <input type="date" id="plannerDateInput" />
+      </div>
+
+      <div id="plannerVerdict" class="verdict-message okay">Select a date to see warnings.</div>
+
+      <div class="recommend-box">
+        <p class="recommend-title">Date Advice</p>
+        <div class="recommend-grid">
+          <div><span class="r-label">Chosen Date</span><span id="plannerChosenDate" class="r-value">—</span></div>
+          <div><span class="r-label">Safety Level</span><span id="plannerSafetyLevel" class="r-value">—</span></div>
+          <div><span class="r-label">Closest Better Date</span><span id="plannerBetterDate" class="r-value">—</span></div>
+        </div>
+      </div>
+
+      <div id="plannerWarnings" class="warnings-list hidden">
+        <h3>⚠️ Date Warnings</h3>
+        <ul id="plannerWarningsUl"></ul>
+      </div>
+
+      <div id="plannerSaveRow" class="planner-save-row hidden">
+        <button id="plannerSaveCalBtn" class="save-cal-btn" type="button">📅 Save to Calendar</button>
+        <p class="save-cal-note">Downloads an .ics file you can open with Google Calendar, Apple Calendar, Outlook, and more.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Date Planner uses the same live forecast data from your selected location.</p>
+  </footer>
+
+  <script src="planner.js"></script>
+</body>
+</html>

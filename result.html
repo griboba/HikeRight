@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HikeRight - Results</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="result">
+  <header>
+    <div class="logo">
+      <span class="logo-icon">⛰️</span>
+      <span class="logo-text">HikeRight</span>
+    </div>
+    <p class="tagline">Your hike safety results</p>
+  </header>
+
+  <main class="results-main">
+    <a class="back-link" href="index.html">← Back To Search</a>
+    <button id="plannerOpenBtn" class="planner-link" type="button">Open Hike Date Planner Tab</button>
+
+    <div id="loadingState" class="loading hidden">
+      <div class="spinner"></div>
+      <p>Fetching conditions...</p>
+    </div>
+
+    <div id="errorState" class="error-card hidden">
+      <span class="error-icon">⚠️</span>
+      <p id="errorMsg">Could not load result data.</p>
+    </div>
+
+    <div id="resultCard" class="result-card hidden">
+      <div class="result-top">
+        <div class="location-info">
+          <div class="loc-pin">📍</div>
+          <div>
+            <h2 id="locationName">—</h2>
+            <p id="locationSub">—</p>
+            <p id="seasonContext" class="season-context hidden">—</p>
+          </div>
+        </div>
+        <div id="verdictBadge" class="verdict-badge">—</div>
+      </div>
+
+      <div class="weather-hero">
+        <div class="hero-left">
+          <div class="hero-temp" id="heroTemp">—</div>
+          <div class="hero-feels">Feels like <span id="heroFeels">—</span></div>
+          <div class="hero-range" id="heroRange">—</div>
+        </div>
+        <div class="hero-right">
+          <div class="hero-icon" id="heroIcon">—</div>
+          <div class="hero-condition" id="heroCondition">—</div>
+        </div>
+      </div>
+
+      <div id="verdictMessage" class="verdict-message">—</div>
+
+      <div class="recommend-box">
+        <p class="recommend-title">Hike Guidance</p>
+        <div class="recommend-grid">
+          <div><span class="r-label">Window</span><span id="recTime" class="r-value">—</span></div>
+          <div><span class="r-label">Day Outlook</span><span id="recDay" class="r-value">—</span></div>
+          <div><span class="r-label">Season</span><span id="recSeason" class="r-value">—</span></div>
+        </div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-item"><span class="d-label">💧 Humidity</span><span class="d-value" id="dHumidity">—</span></div>
+        <div class="detail-item"><span class="d-label">💨 Wind</span><span class="d-value" id="dWind">—</span></div>
+        <div class="detail-item"><span class="d-label">🌧️ Precip Today</span><span class="d-value" id="dPrecip">—</span></div>
+        <div class="detail-item"><span class="d-label">☀️ UV Index</span><span class="d-value" id="dUV">—</span></div>
+        <div class="detail-item"><span class="d-label">⛰️ Elevation</span><span class="d-value" id="dElevation">—</span></div>
+        <div class="detail-item"><span class="d-label">🌅 Sunrise</span><span class="d-value" id="dSunrise">—</span></div>
+        <div class="detail-item"><span class="d-label">🌇 Sunset</span><span class="d-value" id="dSunset">—</span></div>
+        <div class="detail-item"><span class="d-label">🌬️ Max Wind</span><span class="d-value" id="dMaxWind">—</span></div>
+      </div>
+
+      <div class="chart-section">
+        <h3 class="chart-title">7-Day Forecast</h3>
+        <div id="forecastChart" class="forecast-chart"></div>
+      </div>
+
+      <div id="warningsList" class="warnings-list hidden">
+        <h3>⚠️ Warnings</h3>
+        <ul id="warningsUl"></ul>
+      </div>
+
+      <div id="tipsList" class="tips-list">
+        <h3>💡 Tips for this hike</h3>
+        <ul id="tipsUl"></ul>
+      </div>
+
+      <div class="more-wrap">
+        <button id="moreBtn" class="more-btn" type="button" aria-expanded="false">More Information</button>
+        <div id="morePanel" class="more-panel hidden">
+          <div class="more-grid">
+            <div class="chart-section">
+              <h3 class="chart-title">7-Day Rain (mm)</h3>
+              <div id="precipChart" class="forecast-chart"></div>
+            </div>
+            <div class="chart-section">
+              <h3 class="chart-title">7-Day Wind (km/h)</h3>
+              <div id="windChart" class="forecast-chart"></div>
+            </div>
+          </div>
+
+          <div class="reviews-section">
+            <h3>Credible Sources And Reviews</h3>
+            <p class="reviews-note">This app shows source-backed weather notes. For real public reviews, open these trusted sites:</p>
+            <div id="reviewLinks" class="review-links"></div>
+            <ul id="placeReviewsUl"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>HikeRight uses live weather data. Always check local trail conditions before hiking.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

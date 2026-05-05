@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -16,6 +16,17 @@
   </header>
 
   <main>
+    <div class="season-banner">
+      <label for="seasonSelect">Trip Season</label>
+      <select id="seasonSelect">
+        <option value="auto">Current Season</option>
+        <option value="spring">Spring</option>
+        <option value="summer">Summer</option>
+        <option value="fall">Fall</option>
+        <option value="winter">Winter</option>
+      </select>
+    </div>
+
     <div class="search-card">
       <h2>Where are you hiking?</h2>
       <div class="search-row">
@@ -27,9 +38,222 @@
         />
         <button id="checkBtn">Check It</button>
       </div>
-      <p class="hint">We'll check real-time weather and tell you if it's safe.</p>
+      <div class="date-row">
+        <label for="hikeDateInput">When are you hiking?</label>
+        <input type="date" id="hikeDateInput" />
+      </div>
+      <p class="hint">Search any place worldwide and we will check live weather safety.</p>
     </div>
 
+    <!-- FEATURED HIKES -->
+    <div class="featured-section">
+      <p class="featured-label">Global Hike Browser</p>
+      <div class="place-organizer">
+        <label for="placeContinent">Continent</label>
+        <select id="placeContinent">
+          <option value="all">All Continents</option>
+        </select>
+        <label for="placeCountry">Country</label>
+        <select id="placeCountry">
+          <option value="all">All Countries</option>
+        </select>
+        <span id="placeCount" class="place-count">Showing all places</span>
+      </div>
+      <div class="featured-grid">
+        <button class="hike-tab" data-query="Mount Rainier, Washington"><span class="ht-icon">🏔️</span><span class="ht-name">Mount Rainier</span><span class="ht-loc">Washington, USA</span></button>
+        <button class="hike-tab" data-query="Yosemite Valley, California"><span class="ht-icon">🌄</span><span class="ht-name">Yosemite Valley</span><span class="ht-loc">California, USA</span></button>
+        <button class="hike-tab" data-query="Zion National Park, Utah"><span class="ht-icon">🔴</span><span class="ht-name">Zion NP</span><span class="ht-loc">Utah, USA</span></button>
+        <button class="hike-tab" data-query="Rocky Mountain National Park, Colorado"><span class="ht-icon">⛰️</span><span class="ht-name">Rocky Mountains</span><span class="ht-loc">Colorado, USA</span></button>
+        <button class="hike-tab" data-query="Grand Canyon, Arizona"><span class="ht-icon">🏜️</span><span class="ht-name">Grand Canyon</span><span class="ht-loc">Arizona, USA</span></button>
+        <button class="hike-tab" data-query="Olympic National Park, Washington"><span class="ht-icon">🌊</span><span class="ht-name">Olympic NP</span><span class="ht-loc">Washington, USA</span></button>
+        <button class="hike-tab" data-query="Glacier National Park, Montana"><span class="ht-icon">🧊</span><span class="ht-name">Glacier NP</span><span class="ht-loc">Montana, USA</span></button>
+        <button class="hike-tab" data-query="Bryce Canyon National Park, Utah"><span class="ht-icon">🪨</span><span class="ht-name">Bryce Canyon</span><span class="ht-loc">Utah, USA</span></button>
+        <button class="hike-tab" data-query="Arches National Park, Utah"><span class="ht-icon">🌅</span><span class="ht-name">Arches NP</span><span class="ht-loc">Utah, USA</span></button>
+        <button class="hike-tab" data-query="Crater Lake National Park, Oregon"><span class="ht-icon">💙</span><span class="ht-name">Crater Lake</span><span class="ht-loc">Oregon, USA</span></button>
+        <button class="hike-tab" data-query="Mount Hood, Oregon"><span class="ht-icon">🏔️</span><span class="ht-name">Mount Hood</span><span class="ht-loc">Oregon, USA</span></button>
+        <button class="hike-tab" data-query="Death Valley National Park, California"><span class="ht-icon">🌡️</span><span class="ht-name">Death Valley</span><span class="ht-loc">California, USA</span></button>
+        <button class="hike-tab" data-query="Joshua Tree National Park, California"><span class="ht-icon">🌵</span><span class="ht-name">Joshua Tree</span><span class="ht-loc">California, USA</span></button>
+        <button class="hike-tab" data-query="Sequoia National Park, California"><span class="ht-icon">🌳</span><span class="ht-name">Sequoia NP</span><span class="ht-loc">California, USA</span></button>
+        <button class="hike-tab" data-query="Mount Whitney, California"><span class="ht-icon">🏔️</span><span class="ht-name">Mount Whitney</span><span class="ht-loc">California, USA</span></button>
+        <button class="hike-tab" data-query="Canyonlands National Park, Utah"><span class="ht-icon">🏜️</span><span class="ht-name">Canyonlands</span><span class="ht-loc">Utah, USA</span></button>
+        <button class="hike-tab" data-query="Capitol Reef National Park, Utah"><span class="ht-icon">🔴</span><span class="ht-name">Capitol Reef</span><span class="ht-loc">Utah, USA</span></button>
+        <button class="hike-tab" data-query="Mount St. Helens, Washington"><span class="ht-icon">🌋</span><span class="ht-name">Mt St Helens</span><span class="ht-loc">Washington, USA</span></button>
+        <button class="hike-tab" data-query="North Cascades National Park, Washington"><span class="ht-icon">⛰️</span><span class="ht-name">North Cascades</span><span class="ht-loc">Washington, USA</span></button>
+        <button class="hike-tab" data-query="Lassen Volcanic National Park, California"><span class="ht-icon">🌋</span><span class="ht-name">Lassen Volcanic</span><span class="ht-loc">California, USA</span></button>
+        <button class="hike-tab" data-query="Appalachian Trail, Georgia"><span class="ht-icon">🌲</span><span class="ht-name">Appalachian Trail</span><span class="ht-loc">Georgia, USA</span></button>
+        <button class="hike-tab" data-query="Great Smoky Mountains, Tennessee"><span class="ht-icon">🌫️</span><span class="ht-name">Great Smokies</span><span class="ht-loc">Tennessee, USA</span></button>
+        <button class="hike-tab" data-query="Shenandoah National Park, Virginia"><span class="ht-icon">🍂</span><span class="ht-name">Shenandoah NP</span><span class="ht-loc">Virginia, USA</span></button>
+        <button class="hike-tab" data-query="Acadia National Park, Maine"><span class="ht-icon">🌊</span><span class="ht-name">Acadia NP</span><span class="ht-loc">Maine, USA</span></button>
+        <button class="hike-tab" data-query="Mount Washington, New Hampshire"><span class="ht-icon">💨</span><span class="ht-name">Mount Washington</span><span class="ht-loc">New Hampshire, USA</span></button>
+        <button class="hike-tab" data-query="Everglades National Park, Florida"><span class="ht-icon">🐊</span><span class="ht-name">Everglades</span><span class="ht-loc">Florida, USA</span></button>
+        <button class="hike-tab" data-query="Big Bend National Park, Texas"><span class="ht-icon">🏜️</span><span class="ht-name">Big Bend</span><span class="ht-loc">Texas, USA</span></button>
+        <button class="hike-tab" data-query="New River Gorge, West Virginia"><span class="ht-icon">🌉</span><span class="ht-name">New River Gorge</span><span class="ht-loc">West Virginia, USA</span></button>
+        <button class="hike-tab" data-query="Denali National Park, Alaska"><span class="ht-icon">🏔️</span><span class="ht-name">Denali NP</span><span class="ht-loc">Alaska, USA</span></button>
+        <button class="hike-tab" data-query="Wrangell-St Elias National Park, Alaska"><span class="ht-icon">🧊</span><span class="ht-name">Wrangell–St. Elias</span><span class="ht-loc">Alaska, USA</span></button>
+        <button class="hike-tab" data-query="Haleakala National Park, Hawaii"><span class="ht-icon">🌋</span><span class="ht-name">Haleakalā</span><span class="ht-loc">Hawaii, USA</span></button>
+        <button class="hike-tab" data-query="Hawaii Volcanoes National Park"><span class="ht-icon">🌋</span><span class="ht-name">Hawaii Volcanoes</span><span class="ht-loc">Hawaii, USA</span></button>
+        <button class="hike-tab" data-query="Na Pali Coast, Kauai, Hawaii"><span class="ht-icon">🏝️</span><span class="ht-name">Na Pali Coast</span><span class="ht-loc">Kauai, USA</span></button>
+        <button class="hike-tab" data-query="Wind Cave National Park, South Dakota"><span class="ht-icon">🌬️</span><span class="ht-name">Wind Cave NP</span><span class="ht-loc">South Dakota, USA</span></button>
+        <button class="hike-tab" data-query="Badlands National Park, South Dakota"><span class="ht-icon">🪨</span><span class="ht-name">Badlands NP</span><span class="ht-loc">South Dakota, USA</span></button>
+        <button class="hike-tab" data-query="Yellowstone National Park, Wyoming"><span class="ht-icon">♨️</span><span class="ht-name">Yellowstone</span><span class="ht-loc">Wyoming, USA</span></button>
+        <button class="hike-tab" data-query="Grand Teton National Park, Wyoming"><span class="ht-icon">🏔️</span><span class="ht-name">Grand Teton</span><span class="ht-loc">Wyoming, USA</span></button>
+        <button class="hike-tab" data-query="Mesa Verde National Park, Colorado"><span class="ht-icon">🏛️</span><span class="ht-name">Mesa Verde</span><span class="ht-loc">Colorado, USA</span></button>
+        <button class="hike-tab" data-query="Great Sand Dunes National Park, Colorado"><span class="ht-icon">🏜️</span><span class="ht-name">Great Sand Dunes</span><span class="ht-loc">Colorado, USA</span></button>
+        <button class="hike-tab" data-query="Channel Islands National Park, California"><span class="ht-icon">🏝️</span><span class="ht-name">Channel Islands</span><span class="ht-loc">California, USA</span></button>
+        <button class="hike-tab" data-query="Redwood National Park, California"><span class="ht-icon">🌲</span><span class="ht-name">Redwood NP</span><span class="ht-loc">California, USA</span></button>
+        <!-- Canada -->
+        <button class="hike-tab" data-query="Banff National Park, Alberta"><span class="ht-icon">🦌</span><span class="ht-name">Banff NP</span><span class="ht-loc">Alberta, Canada</span></button>
+        <button class="hike-tab" data-query="Jasper National Park, Alberta"><span class="ht-icon">🐻</span><span class="ht-name">Jasper NP</span><span class="ht-loc">Alberta, Canada</span></button>
+        <button class="hike-tab" data-query="Yoho National Park, British Columbia"><span class="ht-icon">🌊</span><span class="ht-name">Yoho NP</span><span class="ht-loc">BC, Canada</span></button>
+        <button class="hike-tab" data-query="Garibaldi Provincial Park, BC"><span class="ht-icon">⛰️</span><span class="ht-name">Garibaldi PP</span><span class="ht-loc">BC, Canada</span></button>
+        <button class="hike-tab" data-query="Cape Breton Highlands, Nova Scotia"><span class="ht-icon">🌊</span><span class="ht-name">Cape Breton</span><span class="ht-loc">Nova Scotia, Canada</span></button>
+        <button class="hike-tab" data-query="Gros Morne National Park, Newfoundland"><span class="ht-icon">🪨</span><span class="ht-name">Gros Morne</span><span class="ht-loc">Newfoundland, Canada</span></button>
+        <button class="hike-tab" data-query="Kootenay National Park, BC"><span class="ht-icon">🌿</span><span class="ht-name">Kootenay NP</span><span class="ht-loc">BC, Canada</span></button>
+        <button class="hike-tab" data-query="Nahanni National Park, Northwest Territories"><span class="ht-icon">💧</span><span class="ht-name">Nahanni NP</span><span class="ht-loc">NWT, Canada</span></button>
+        <button class="hike-tab" data-query="Bruce Peninsula National Park, Ontario"><span class="ht-icon">🌊</span><span class="ht-name">Bruce Peninsula</span><span class="ht-loc">Ontario, Canada</span></button>
+        <button class="hike-tab" data-query="Fundy National Park, New Brunswick"><span class="ht-icon">🌊</span><span class="ht-name">Fundy NP</span><span class="ht-loc">New Brunswick, Canada</span></button>
+        <!-- Mexico & Central America -->
+        <button class="hike-tab" data-query="Copper Canyon, Chihuahua, Mexico"><span class="ht-icon">🏜️</span><span class="ht-name">Copper Canyon</span><span class="ht-loc">Chihuahua, Mexico</span></button>
+        <button class="hike-tab" data-query="Popocatepetl Volcano, Mexico"><span class="ht-icon">🌋</span><span class="ht-name">Popocatépetl</span><span class="ht-loc">Mexico</span></button>
+        <button class="hike-tab" data-query="Arenal Volcano, Costa Rica"><span class="ht-icon">🌋</span><span class="ht-name">Arenal Volcano</span><span class="ht-loc">Costa Rica</span></button>
+        <button class="hike-tab" data-query="Monteverde Cloud Forest, Costa Rica"><span class="ht-icon">☁️</span><span class="ht-name">Monteverde</span><span class="ht-loc">Costa Rica</span></button>
+        <!-- South America -->
+        <button class="hike-tab" data-query="Patagonia, Chile"><span class="ht-icon">🌊</span><span class="ht-name">Patagonia</span><span class="ht-loc">Chile</span></button>
+        <button class="hike-tab" data-query="Torres del Paine, Chile"><span class="ht-icon">🏔️</span><span class="ht-name">Torres del Paine</span><span class="ht-loc">Chile</span></button>
+        <button class="hike-tab" data-query="Machu Picchu, Peru"><span class="ht-icon">🏛️</span><span class="ht-name">Machu Picchu</span><span class="ht-loc">Peru</span></button>
+        <button class="hike-tab" data-query="Inca Trail, Cusco, Peru"><span class="ht-icon">🗿</span><span class="ht-name">Inca Trail</span><span class="ht-loc">Cusco, Peru</span></button>
+        <button class="hike-tab" data-query="Roraima Mountain, Venezuela"><span class="ht-icon">☁️</span><span class="ht-name">Mount Roraima</span><span class="ht-loc">Venezuela</span></button>
+        <button class="hike-tab" data-query="Fitz Roy, El Chalten, Argentina"><span class="ht-icon">🏔️</span><span class="ht-name">Fitz Roy</span><span class="ht-loc">Argentina</span></button>
+        <button class="hike-tab" data-query="Aconcagua, Mendoza, Argentina"><span class="ht-icon">⛰️</span><span class="ht-name">Aconcagua</span><span class="ht-loc">Argentina</span></button>
+        <button class="hike-tab" data-query="Cotopaxi Volcano, Ecuador"><span class="ht-icon">🌋</span><span class="ht-name">Cotopaxi</span><span class="ht-loc">Ecuador</span></button>
+        <button class="hike-tab" data-query="Galapagos Islands, Ecuador"><span class="ht-icon">🦎</span><span class="ht-name">Galápagos</span><span class="ht-loc">Ecuador</span></button>
+        <button class="hike-tab" data-query="Chapada Diamantina, Bahia, Brazil"><span class="ht-icon">💎</span><span class="ht-name">Chapada Diamantina</span><span class="ht-loc">Brazil</span></button>
+        <button class="hike-tab" data-query="Huayna Potosi, Bolivia"><span class="ht-icon">🏔️</span><span class="ht-name">Huayna Potosí</span><span class="ht-loc">Bolivia</span></button>
+        <button class="hike-tab" data-query="Salar de Uyuni, Bolivia"><span class="ht-icon">🧂</span><span class="ht-name">Salar de Uyuni</span><span class="ht-loc">Bolivia</span></button>
+        <button class="hike-tab" data-query="Los Glaciares National Park, Argentina"><span class="ht-icon">🧊</span><span class="ht-name">Los Glaciares NP</span><span class="ht-loc">Argentina</span></button>
+        <!-- Europe - Alps -->
+        <button class="hike-tab" data-query="Dolomites, South Tyrol, Italy"><span class="ht-icon">🇮🇹</span><span class="ht-name">The Dolomites</span><span class="ht-loc">Italy</span></button>
+        <button class="hike-tab" data-query="Mont Blanc, Chamonix, France"><span class="ht-icon">🏔️</span><span class="ht-name">Mont Blanc</span><span class="ht-loc">France/Italy</span></button>
+        <button class="hike-tab" data-query="Matterhorn, Zermatt, Switzerland"><span class="ht-icon">🏔️</span><span class="ht-name">Matterhorn</span><span class="ht-loc">Switzerland</span></button>
+        <button class="hike-tab" data-query="Jungfrau, Bernese Alps, Switzerland"><span class="ht-icon">⛷️</span><span class="ht-name">Jungfrau</span><span class="ht-loc">Switzerland</span></button>
+        <button class="hike-tab" data-query="Eiger, Grindelwald, Switzerland"><span class="ht-icon">🏔️</span><span class="ht-name">Eiger</span><span class="ht-loc">Switzerland</span></button>
+        <button class="hike-tab" data-query="Grossglockner, Austria"><span class="ht-icon">⛰️</span><span class="ht-name">Grossglockner</span><span class="ht-loc">Austria</span></button>
+        <button class="hike-tab" data-query="Pyrenees, Andorra"><span class="ht-icon">🗻</span><span class="ht-name">Pyrenees</span><span class="ht-loc">Andorra</span></button>
+        <button class="hike-tab" data-query="Triglav National Park, Slovenia"><span class="ht-icon">🌿</span><span class="ht-name">Triglav NP</span><span class="ht-loc">Slovenia</span></button>
+        <button class="hike-tab" data-query="Picos de Europa, Spain"><span class="ht-icon">⛰️</span><span class="ht-name">Picos de Europa</span><span class="ht-loc">Spain</span></button>
+        <button class="hike-tab" data-query="Tour du Mont Blanc, France"><span class="ht-icon">🔄</span><span class="ht-name">Tour du Mont Blanc</span><span class="ht-loc">France</span></button>
+        <!-- Europe - Nordic & UK -->
+        <button class="hike-tab" data-query="Snowdonia National Park, Wales"><span class="ht-icon">🌧️</span><span class="ht-name">Snowdonia</span><span class="ht-loc">Wales, UK</span></button>
+        <button class="hike-tab" data-query="Ben Nevis, Scotland"><span class="ht-icon">🏴󠁧󠁢󠁳󠁣󠁴󠁿</span><span class="ht-name">Ben Nevis</span><span class="ht-loc">Scotland, UK</span></button>
+        <button class="hike-tab" data-query="Lake District, England"><span class="ht-icon">💧</span><span class="ht-name">Lake District</span><span class="ht-loc">England, UK</span></button>
+        <button class="hike-tab" data-query="Cairngorms National Park, Scotland"><span class="ht-icon">🦅</span><span class="ht-name">Cairngorms NP</span><span class="ht-loc">Scotland, UK</span></button>
+        <button class="hike-tab" data-query="Lofoten Islands, Norway"><span class="ht-icon">🌊</span><span class="ht-name">Lofoten Islands</span><span class="ht-loc">Norway</span></button>
+        <button class="hike-tab" data-query="Trolltunga, Hardanger, Norway"><span class="ht-icon">🪨</span><span class="ht-name">Trolltunga</span><span class="ht-loc">Norway</span></button>
+        <button class="hike-tab" data-query="Preikestolen, Stavanger, Norway"><span class="ht-icon">🪨</span><span class="ht-name">Preikestolen</span><span class="ht-loc">Norway</span></button>
+        <button class="hike-tab" data-query="Kungsleden Trail, Sweden"><span class="ht-icon">🌲</span><span class="ht-name">Kungsleden</span><span class="ht-loc">Sweden</span></button>
+        <button class="hike-tab" data-query="Sarek National Park, Sweden"><span class="ht-icon">🦌</span><span class="ht-name">Sarek NP</span><span class="ht-loc">Sweden</span></button>
+        <button class="hike-tab" data-query="Nuuksio National Park, Finland"><span class="ht-icon">🌲</span><span class="ht-name">Nuuksio NP</span><span class="ht-loc">Finland</span></button>
+        <button class="hike-tab" data-query="Landmannalaugar, Iceland"><span class="ht-icon">🌋</span><span class="ht-name">Landmannalaugar</span><span class="ht-loc">Iceland</span></button>
+        <button class="hike-tab" data-query="Fimmvörðuháls, Iceland"><span class="ht-icon">🔥</span><span class="ht-name">Fimmvörðuháls</span><span class="ht-loc">Iceland</span></button>
+        <button class="hike-tab" data-query="Skaftafell, Vatnajokull, Iceland"><span class="ht-icon">🧊</span><span class="ht-name">Skaftafell</span><span class="ht-loc">Iceland</span></button>
+        <!-- Europe - Mediterranean & Eastern -->
+        <button class="hike-tab" data-query="Cinque Terre, Liguria, Italy"><span class="ht-icon">🌊</span><span class="ht-name">Cinque Terre</span><span class="ht-loc">Italy</span></button>
+        <button class="hike-tab" data-query="Amalfi Coast, Italy"><span class="ht-icon">🌊</span><span class="ht-name">Amalfi Coast</span><span class="ht-loc">Italy</span></button>
+        <button class="hike-tab" data-query="Etna Volcano, Sicily, Italy"><span class="ht-icon">🌋</span><span class="ht-name">Mount Etna</span><span class="ht-loc">Sicily, Italy</span></button>
+        <button class="hike-tab" data-query="Samaria Gorge, Crete, Greece"><span class="ht-icon">🏛️</span><span class="ht-name">Samaria Gorge</span><span class="ht-loc">Crete, Greece</span></button>
+        <button class="hike-tab" data-query="Olympus Mountain, Greece"><span class="ht-icon">⚡</span><span class="ht-name">Mount Olympus</span><span class="ht-loc">Greece</span></button>
+        <button class="hike-tab" data-query="Rila National Park, Bulgaria"><span class="ht-icon">🌿</span><span class="ht-name">Rila NP</span><span class="ht-loc">Bulgaria</span></button>
+        <button class="hike-tab" data-query="Durmitor National Park, Montenegro"><span class="ht-icon">🦅</span><span class="ht-name">Durmitor NP</span><span class="ht-loc">Montenegro</span></button>
+        <button class="hike-tab" data-query="Tatra Mountains, Poland"><span class="ht-icon">⛰️</span><span class="ht-name">Tatra Mountains</span><span class="ht-loc">Poland</span></button>
+        <button class="hike-tab" data-query="Retezat National Park, Romania"><span class="ht-icon">🐺</span><span class="ht-name">Retezat NP</span><span class="ht-loc">Romania</span></button>
+        <button class="hike-tab" data-query="Plitvice Lakes National Park, Croatia"><span class="ht-icon">💧</span><span class="ht-name">Plitvice Lakes</span><span class="ht-loc">Croatia</span></button>
+        <button class="hike-tab" data-query="Paklenica National Park, Croatia"><span class="ht-icon">🪨</span><span class="ht-name">Paklenica NP</span><span class="ht-loc">Croatia</span></button>
+        <button class="hike-tab" data-query="Peneda-Geres National Park, Portugal"><span class="ht-icon">🌿</span><span class="ht-name">Peneda-Gerês</span><span class="ht-loc">Portugal</span></button>
+        <button class="hike-tab" data-query="Serra da Estrela, Portugal"><span class="ht-icon">⛰️</span><span class="ht-name">Serra da Estrela</span><span class="ht-loc">Portugal</span></button>
+        <button class="hike-tab" data-query="Sierra Nevada, Andalusia, Spain"><span class="ht-icon">❄️</span><span class="ht-name">Sierra Nevada</span><span class="ht-loc">Spain</span></button>
+        <button class="hike-tab" data-query="Ordesa National Park, Aragon, Spain"><span class="ht-icon">🏔️</span><span class="ht-name">Ordesa NP</span><span class="ht-loc">Spain</span></button>
+        <button class="hike-tab" data-query="Black Forest, Baden-Württemberg, Germany"><span class="ht-icon">🌲</span><span class="ht-name">Black Forest</span><span class="ht-loc">Germany</span></button>
+        <button class="hike-tab" data-query="Berchtesgaden National Park, Bavaria, Germany"><span class="ht-icon">⛰️</span><span class="ht-name">Berchtesgaden NP</span><span class="ht-loc">Bavaria, Germany</span></button>
+        <button class="hike-tab" data-query="Saxony Switzerland National Park, Germany"><span class="ht-icon">🪨</span><span class="ht-name">Saxon Switzerland</span><span class="ht-loc">Germany</span></button>
+        <button class="hike-tab" data-query="Verdon Gorge, Provence, France"><span class="ht-icon">💚</span><span class="ht-name">Verdon Gorge</span><span class="ht-loc">Provence, France</span></button>
+        <button class="hike-tab" data-query="Ecrins National Park, France"><span class="ht-icon">🏔️</span><span class="ht-name">Écrins NP</span><span class="ht-loc">France</span></button>
+        <!-- Africa -->
+        <button class="hike-tab" data-query="Mount Kilimanjaro, Tanzania"><span class="ht-icon">🌍</span><span class="ht-name">Kilimanjaro</span><span class="ht-loc">Tanzania</span></button>
+        <button class="hike-tab" data-query="Mount Kenya, Kenya"><span class="ht-icon">🦁</span><span class="ht-name">Mount Kenya</span><span class="ht-loc">Kenya</span></button>
+        <button class="hike-tab" data-query="Rwenzori Mountains, Uganda"><span class="ht-icon">🌿</span><span class="ht-name">Rwenzori Mts</span><span class="ht-loc">Uganda</span></button>
+        <button class="hike-tab" data-query="Simien Mountains, Ethiopia"><span class="ht-icon">🐒</span><span class="ht-name">Simien Mountains</span><span class="ht-loc">Ethiopia</span></button>
+        <button class="hike-tab" data-query="Table Mountain, Cape Town, South Africa"><span class="ht-icon">🌅</span><span class="ht-name">Table Mountain</span><span class="ht-loc">South Africa</span></button>
+        <button class="hike-tab" data-query="Drakensberg, KwaZulu-Natal, South Africa"><span class="ht-icon">🏔️</span><span class="ht-name">Drakensberg</span><span class="ht-loc">South Africa</span></button>
+        <button class="hike-tab" data-query="Atlas Mountains, Morocco"><span class="ht-icon">🏜️</span><span class="ht-name">Atlas Mountains</span><span class="ht-loc">Morocco</span></button>
+        <button class="hike-tab" data-query="Mount Toubkal, Morocco"><span class="ht-icon">⛰️</span><span class="ht-name">Mount Toubkal</span><span class="ht-loc">Morocco</span></button>
+        <button class="hike-tab" data-query="Virunga National Park, DRC"><span class="ht-icon">🦍</span><span class="ht-name">Virunga NP</span><span class="ht-loc">DR Congo</span></button>
+        <button class="hike-tab" data-query="Bale Mountains, Ethiopia"><span class="ht-icon">🐾</span><span class="ht-name">Bale Mountains</span><span class="ht-loc">Ethiopia</span></button>
+        <button class="hike-tab" data-query="Namib-Naukluft National Park, Namibia"><span class="ht-icon">🏜️</span><span class="ht-name">Namib-Naukluft</span><span class="ht-loc">Namibia</span></button>
+        <button class="hike-tab" data-query="Fish River Canyon, Namibia"><span class="ht-icon">🏜️</span><span class="ht-name">Fish River Canyon</span><span class="ht-loc">Namibia</span></button>
+        <button class="hike-tab" data-query="Toubkal National Park, Morocco"><span class="ht-icon">🏔️</span><span class="ht-name">Toubkal NP</span><span class="ht-loc">Morocco</span></button>
+        <button class="hike-tab" data-query="Aït Benhaddou, Morocco"><span class="ht-icon">🏰</span><span class="ht-name">Aït Benhaddou</span><span class="ht-loc">Morocco</span></button>
+        <!-- Asia - Himalaya -->
+        <button class="hike-tab" data-query="Everest Base Camp, Nepal"><span class="ht-icon">🏔️</span><span class="ht-name">Everest Base Camp</span><span class="ht-loc">Nepal</span></button>
+        <button class="hike-tab" data-query="Annapurna Circuit, Nepal"><span class="ht-icon">🗻</span><span class="ht-name">Annapurna Circuit</span><span class="ht-loc">Nepal</span></button>
+        <button class="hike-tab" data-query="Langtang Valley, Nepal"><span class="ht-icon">🏕️</span><span class="ht-name">Langtang Valley</span><span class="ht-loc">Nepal</span></button>
+        <button class="hike-tab" data-query="Manaslu Circuit, Nepal"><span class="ht-icon">⛰️</span><span class="ht-name">Manaslu Circuit</span><span class="ht-loc">Nepal</span></button>
+        <button class="hike-tab" data-query="K2 Base Camp, Pakistan"><span class="ht-icon">🏔️</span><span class="ht-name">K2 Base Camp</span><span class="ht-loc">Pakistan</span></button>
+        <button class="hike-tab" data-query="Fairy Meadows, Gilgit-Baltistan, Pakistan"><span class="ht-icon">🧚</span><span class="ht-name">Fairy Meadows</span><span class="ht-loc">Pakistan</span></button>
+        <button class="hike-tab" data-query="Markha Valley, Ladakh, India"><span class="ht-icon">🏔️</span><span class="ht-name">Markha Valley</span><span class="ht-loc">Ladakh, India</span></button>
+        <button class="hike-tab" data-query="Valley of Flowers, Uttarakhand, India"><span class="ht-icon">🌸</span><span class="ht-name">Valley of Flowers</span><span class="ht-loc">India</span></button>
+        <button class="hike-tab" data-query="Tiger's Nest, Paro, Bhutan"><span class="ht-icon">🐯</span><span class="ht-name">Tiger's Nest</span><span class="ht-loc">Bhutan</span></button>
+        <button class="hike-tab" data-query="Snowman Trek, Bhutan"><span class="ht-icon">⛄</span><span class="ht-name">Snowman Trek</span><span class="ht-loc">Bhutan</span></button>
+        <button class="hike-tab" data-query="Roopkund Lake, Uttarakhand, India"><span class="ht-icon">💀</span><span class="ht-name">Roopkund Lake</span><span class="ht-loc">India</span></button>
+        <button class="hike-tab" data-query="Kedarnath, Uttarakhand, India"><span class="ht-icon">🛕</span><span class="ht-name">Kedarnath</span><span class="ht-loc">India</span></button>
+        <button class="hike-tab" data-query="Hampta Pass, Himachal Pradesh, India"><span class="ht-icon">⛰️</span><span class="ht-name">Hampta Pass</span><span class="ht-loc">India</span></button>
+        <button class="hike-tab" data-query="Chadar Trek, Ladakh, India"><span class="ht-icon">🧊</span><span class="ht-name">Chadar Trek</span><span class="ht-loc">Ladakh, India</span></button>
+        <!-- Asia - East & Southeast -->
+        <button class="hike-tab" data-query="Mount Fuji, Japan"><span class="ht-icon">🗻</span><span class="ht-name">Mount Fuji</span><span class="ht-loc">Japan</span></button>
+        <button class="hike-tab" data-query="Kumano Kodo, Wakayama, Japan"><span class="ht-icon">🌲</span><span class="ht-name">Kumano Kodo</span><span class="ht-loc">Japan</span></button>
+        <button class="hike-tab" data-query="Nakasendo Trail, Japan"><span class="ht-icon">🏯</span><span class="ht-name">Nakasendo Trail</span><span class="ht-loc">Japan</span></button>
+        <button class="hike-tab" data-query="Daisetsuzan National Park, Hokkaido, Japan"><span class="ht-icon">🌸</span><span class="ht-name">Daisetsuzan NP</span><span class="ht-loc">Hokkaido, Japan</span></button>
+        <button class="hike-tab" data-query="Hallasan Mountain, Jeju Island, South Korea"><span class="ht-icon">🌺</span><span class="ht-name">Hallasan</span><span class="ht-loc">Jeju, South Korea</span></button>
+        <button class="hike-tab" data-query="Seoraksan National Park, South Korea"><span class="ht-icon">🍁</span><span class="ht-name">Seoraksan NP</span><span class="ht-loc">South Korea</span></button>
+        <button class="hike-tab" data-query="Taroko Gorge, Taiwan"><span class="ht-icon">🪨</span><span class="ht-name">Taroko Gorge</span><span class="ht-loc">Taiwan</span></button>
+        <button class="hike-tab" data-query="Huangshan Yellow Mountain, China"><span class="ht-icon">🌫️</span><span class="ht-name">Huangshan</span><span class="ht-loc">China</span></button>
+        <button class="hike-tab" data-query="Zhangjiajie National Forest Park, China"><span class="ht-icon">🏯</span><span class="ht-name">Zhangjiajie</span><span class="ht-loc">China</span></button>
+        <button class="hike-tab" data-query="Tiger Leaping Gorge, Yunnan, China"><span class="ht-icon">🐯</span><span class="ht-name">Tiger Leaping Gorge</span><span class="ht-loc">Yunnan, China</span></button>
+        <button class="hike-tab" data-query="Kinabalu National Park, Sabah, Malaysia"><span class="ht-icon">🏔️</span><span class="ht-name">Mount Kinabalu</span><span class="ht-loc">Malaysia</span></button>
+        <button class="hike-tab" data-query="Cameron Highlands, Malaysia"><span class="ht-icon">🍵</span><span class="ht-name">Cameron Highlands</span><span class="ht-loc">Malaysia</span></button>
+        <button class="hike-tab" data-query="Rinjani Volcano, Lombok, Indonesia"><span class="ht-icon">🌋</span><span class="ht-name">Mount Rinjani</span><span class="ht-loc">Indonesia</span></button>
+        <button class="hike-tab" data-query="Bromo Tengger, East Java, Indonesia"><span class="ht-icon">🌋</span><span class="ht-name">Mount Bromo</span><span class="ht-loc">Indonesia</span></button>
+        <button class="hike-tab" data-query="Doi Inthanon National Park, Thailand"><span class="ht-icon">🌿</span><span class="ht-name">Doi Inthanon</span><span class="ht-loc">Thailand</span></button>
+        <button class="hike-tab" data-query="Phong Nha Ke Bang, Vietnam"><span class="ht-icon">🕳️</span><span class="ht-name">Phong Nha</span><span class="ht-loc">Vietnam</span></button>
+        <button class="hike-tab" data-query="Fansipan Mountain, Lao Cai, Vietnam"><span class="ht-icon">🏔️</span><span class="ht-name">Fansipan</span><span class="ht-loc">Vietnam</span></button>
+        <button class="hike-tab" data-query="Khao Yai National Park, Thailand"><span class="ht-icon">🐘</span><span class="ht-name">Khao Yai NP</span><span class="ht-loc">Thailand</span></button>
+        <button class="hike-tab" data-query="Gunung Mulu National Park, Sarawak, Malaysia"><span class="ht-icon">🦇</span><span class="ht-name">Gunung Mulu</span><span class="ht-loc">Sarawak, Malaysia</span></button>
+        <button class="hike-tab" data-query="Adam's Peak, Sri Lanka"><span class="ht-icon">🦶</span><span class="ht-name">Adam's Peak</span><span class="ht-loc">Sri Lanka</span></button>
+        <button class="hike-tab" data-query="Knuckles Mountain Range, Sri Lanka"><span class="ht-icon">⛰️</span><span class="ht-name">Knuckles Range</span><span class="ht-loc">Sri Lanka</span></button>
+        <!-- Middle East -->
+        <button class="hike-tab" data-query="Petra, Jordan"><span class="ht-icon">🏛️</span><span class="ht-name">Petra</span><span class="ht-loc">Jordan</span></button>
+        <button class="hike-tab" data-query="Wadi Rum, Jordan"><span class="ht-icon">🏜️</span><span class="ht-name">Wadi Rum</span><span class="ht-loc">Jordan</span></button>
+        <button class="hike-tab" data-query="Masada, Israel"><span class="ht-icon">🏰</span><span class="ht-name">Masada</span><span class="ht-loc">Israel</span></button>
+        <button class="hike-tab" data-query="Mount Sinai, Egypt"><span class="ht-icon">⛪</span><span class="ht-name">Mount Sinai</span><span class="ht-loc">Egypt</span></button>
+        <button class="hike-tab" data-query="Hajar Mountains, Oman"><span class="ht-icon">🏜️</span><span class="ht-name">Hajar Mountains</span><span class="ht-loc">Oman</span></button>
+        <button class="hike-tab" data-query="Jebel Shams, Oman"><span class="ht-icon">⛰️</span><span class="ht-name">Jebel Shams</span><span class="ht-loc">Oman</span></button>
+        <button class="hike-tab" data-query="Asir National Park, Saudi Arabia"><span class="ht-icon">🏔️</span><span class="ht-name">Asir NP</span><span class="ht-loc">Saudi Arabia</span></button>
+        <!-- Oceania -->
+        <button class="hike-tab" data-query="Cradle Mountain, Tasmania, Australia"><span class="ht-icon">🌿</span><span class="ht-name">Cradle Mountain</span><span class="ht-loc">Tasmania, AUS</span></button>
+        <button class="hike-tab" data-query="Blue Mountains National Park, New South Wales"><span class="ht-icon">💙</span><span class="ht-name">Blue Mountains</span><span class="ht-loc">NSW, Australia</span></button>
+        <button class="hike-tab" data-query="Grampians National Park, Victoria, Australia"><span class="ht-icon">🦘</span><span class="ht-name">Grampians NP</span><span class="ht-loc">Victoria, AUS</span></button>
+        <button class="hike-tab" data-query="Karijini National Park, Western Australia"><span class="ht-icon">🔴</span><span class="ht-name">Karijini NP</span><span class="ht-loc">WA, Australia</span></button>
+        <button class="hike-tab" data-query="Uluru, Northern Territory, Australia"><span class="ht-icon">🔴</span><span class="ht-name">Uluru</span><span class="ht-loc">NT, Australia</span></button>
+        <button class="hike-tab" data-query="Tongariro Alpine Crossing, New Zealand"><span class="ht-icon">🌋</span><span class="ht-name">Tongariro Crossing</span><span class="ht-loc">New Zealand</span></button>
+        <button class="hike-tab" data-query="Milford Track, Fiordland, New Zealand"><span class="ht-icon">🌊</span><span class="ht-name">Milford Track</span><span class="ht-loc">New Zealand</span></button>
+        <button class="hike-tab" data-query="Mount Cook National Park, New Zealand"><span class="ht-icon">🏔️</span><span class="ht-name">Mount Cook</span><span class="ht-loc">New Zealand</span></button>
+        <button class="hike-tab" data-query="Routeburn Track, New Zealand"><span class="ht-icon">🌿</span><span class="ht-name">Routeburn Track</span><span class="ht-loc">New Zealand</span></button>
+        <button class="hike-tab" data-query="Abel Tasman National Park, New Zealand"><span class="ht-icon">🏖️</span><span class="ht-name">Abel Tasman NP</span><span class="ht-loc">New Zealand</span></button>
+        <button class="hike-tab" data-query="Kokoda Track, Papua New Guinea"><span class="ht-icon">🌴</span><span class="ht-name">Kokoda Track</span><span class="ht-loc">Papua New Guinea</span></button>
+        <button class="hike-tab" data-query="Fiordland National Park, New Zealand"><span class="ht-icon">🌊</span><span class="ht-name">Fiordland NP</span><span class="ht-loc">New Zealand</span></button>
+        <button class="hike-tab" data-query="Waitakere Ranges, Auckland, New Zealand"><span class="ht-icon">🌿</span><span class="ht-name">Waitakere Ranges</span><span class="ht-loc">Auckland, NZ</span></button>
+        <button class="hike-tab" data-query="Daintree Rainforest, Queensland, Australia"><span class="ht-icon">🌴</span><span class="ht-name">Daintree Rainforest</span><span class="ht-loc">Queensland, AUS</span></button>
+      </div>
+    </div>
     <div id="loadingState" class="loading hidden">
       <div class="spinner"></div>
       <p>Fetching conditions...</p>
@@ -41,60 +265,99 @@
     </div>
 
     <div id="resultCard" class="result-card hidden">
-      <div class="result-header">
+
+      <!-- TOP: location + verdict badge -->
+      <div class="result-top">
         <div class="location-info">
-          <h2 id="locationName">—</h2>
-          <p id="locationSub">—</p>
+          <div class="loc-pin">📍</div>
+          <div>
+            <h2 id="locationName">—</h2>
+            <p id="locationSub">—</p>
+            <p id="seasonContext" class="season-context hidden">—</p>
+          </div>
         </div>
         <div id="verdictBadge" class="verdict-badge">—</div>
       </div>
 
-      <div id="verdictMessage" class="verdict-message">—</div>
-
-      <div class="weather-grid">
-        <div class="weather-item">
-          <span class="w-icon">🌡️</span>
-          <span class="w-label">Temperature</span>
-          <span class="w-value" id="wTemp">—</span>
+      <!-- HERO: big temp + condition -->
+      <div class="weather-hero">
+        <div class="hero-left">
+          <div class="hero-temp" id="heroTemp">—</div>
+          <div class="hero-feels">Feels like <span id="heroFeels">—</span></div>
+          <div class="hero-range" id="heroRange">—</div>
         </div>
-        <div class="weather-item">
-          <span class="w-icon">💧</span>
-          <span class="w-label">Precipitation</span>
-          <span class="w-value" id="wPrecip">—</span>
-        </div>
-        <div class="weather-item">
-          <span class="w-icon">💨</span>
-          <span class="w-label">Wind Speed</span>
-          <span class="w-value" id="wWind">—</span>
-        </div>
-        <div class="weather-item">
-          <span class="w-icon">👁️</span>
-          <span class="w-label">Conditions</span>
-          <span class="w-value" id="wCondition">—</span>
-        </div>
-        <div class="weather-item">
-          <span class="w-icon">🌅</span>
-          <span class="w-label">Sunrise</span>
-          <span class="w-value" id="wSunrise">—</span>
-        </div>
-        <div class="weather-item">
-          <span class="w-icon">🌇</span>
-          <span class="w-label">Sunset</span>
-          <span class="w-value" id="wSunset">—</span>
+        <div class="hero-right">
+          <div class="hero-icon" id="heroIcon">—</div>
+          <div class="hero-condition" id="heroCondition">—</div>
         </div>
       </div>
 
+      <!-- VERDICT MESSAGE -->
+      <div id="verdictMessage" class="verdict-message">—</div>
+
+      <div class="recommend-box">
+        <p class="recommend-title">Hike Guidance</p>
+        <div class="recommend-grid">
+          <div><span class="r-label">Window</span><span id="recTime" class="r-value">—</span></div>
+          <div><span class="r-label">Day Outlook</span><span id="recDay" class="r-value">—</span></div>
+          <div><span class="r-label">Season</span><span id="recSeason" class="r-value">—</span></div>
+        </div>
+      </div>
+
+      <!-- DETAIL GRID -->
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="d-label">💧 Humidity</span>
+          <span class="d-value" id="dHumidity">—</span>
+        </div>
+        <div class="detail-item">
+          <span class="d-label">💨 Wind</span>
+          <span class="d-value" id="dWind">—</span>
+        </div>
+        <div class="detail-item">
+          <span class="d-label">🌧️ Precip Today</span>
+          <span class="d-value" id="dPrecip">—</span>
+        </div>
+        <div class="detail-item">
+          <span class="d-label">☀️ UV Index</span>
+          <span class="d-value" id="dUV">—</span>
+        </div>
+        <div class="detail-item">
+          <span class="d-label">⛰️ Elevation</span>
+          <span class="d-value" id="dElevation">—</span>
+        </div>
+        <div class="detail-item">
+          <span class="d-label">🌅 Sunrise</span>
+          <span class="d-value" id="dSunrise">—</span>
+        </div>
+        <div class="detail-item">
+          <span class="d-label">🌇 Sunset</span>
+          <span class="d-value" id="dSunset">—</span>
+        </div>
+        <div class="detail-item">
+          <span class="d-label">🌬️ Max Wind</span>
+          <span class="d-value" id="dMaxWind">—</span>
+        </div>
+      </div>
+
+      <!-- 7-DAY FORECAST CHART -->
+      <div class="chart-section">
+        <h3 class="chart-title">7-Day Forecast</h3>
+        <div id="forecastChart" class="forecast-chart"></div>
+      </div>
+
+      <!-- WARNINGS -->
       <div id="warningsList" class="warnings-list hidden">
         <h3>⚠️ Warnings</h3>
         <ul id="warningsUl"></ul>
       </div>
 
+      <!-- TIPS -->
       <div id="tipsList" class="tips-list">
         <h3>💡 Tips for this hike</h3>
         <ul id="tipsUl"></ul>
       </div>
 
-      <p class="elevation-note" id="elevationNote"></p>
     </div>
   </main>
 
