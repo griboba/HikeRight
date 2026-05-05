@@ -27,6 +27,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 /* HEADER */
@@ -370,6 +371,7 @@ main {
 
 @media (max-width: 700px) { .featured-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 420px) { .featured-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 380px) { .featured-grid { grid-template-columns: 1fr; } }
 
 .hike-tab {
   background: var(--card);
@@ -649,6 +651,8 @@ main {
   .season-row { flex-direction: column; align-items: flex-start; }
   .weather-hero { flex-direction: column; text-align: center; }
   .recommend-grid { grid-template-columns: 1fr; }
+  #checkBtn { width: 100%; }
+  #locationInput { width: 100%; }
 }
 
 @media (max-width: 520px) {
@@ -839,6 +843,68 @@ footer {
   .planner-link {
     margin-left: 0;
     margin-top: 0.6rem;
+  }
+}
+
+@media (max-width: 540px) {
+  header {
+    padding: 2.2rem 0.9rem 1.4rem;
+  }
+
+  .logo-text {
+    font-size: 2.1rem;
+  }
+
+  .tagline {
+    font-size: 0.92rem;
+  }
+
+  main {
+    padding: 1.25rem 0.75rem;
+    gap: 1rem;
+  }
+
+  .search-card,
+  .result-card {
+    padding: 1.2rem;
+  }
+
+  .weather-hero {
+    padding: 1.2rem;
+  }
+
+  .hero-temp {
+    font-size: 3.1rem;
+  }
+
+  .result-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .recommend-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .planner-calendar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .planner-day-btn {
+    padding: 0.65rem;
+  }
+
+  .chart-section,
+  .warnings-list,
+  .tips-list,
+  .reviews-section {
+    padding: 0.9rem;
   }
 }
 
