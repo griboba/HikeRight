@@ -497,17 +497,17 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
   const rainLikely = dailyPrecip >= 2 || (code >= 51 && code <= 82) || precip > 0.2;
 
   if (tempC <= -20 || dailyMinTemp <= -20) {
-    score += 4; warnings.push(`Extremely cold -- current ${fmt(tempC)}. Frostbite risk is HIGH.`);
+    score += 4; warnings.push(`Extremely cold weather (${fmt(tempC)}). Frostbite risk may be elevated for exposed skin.`);
   } else if (tempC <= -10 || dailyMinTemp <= -10) {
-    score += 3; warnings.push(`Very cold temperatures (${fmt(tempC)}). Heavy insulation required.`);
+    score += 3; warnings.push(`Very cold temperatures (${fmt(tempC)}). Heavy insulation is strongly recommended.`);
   } else if (tempC <= 0 || dailyMinTemp <= 0) {
-    score += 2; warnings.push(`Freezing temperatures -- trails may be icy or snow-covered.`);
+    score += 2; warnings.push(`Freezing temperatures may leave trails icy or snow-covered.`);
   } else if (tempC <= 8 || dailyMinTemp <= 5) {
     score += 1; warnings.push(`Cold hiking window (${fmt(tempC)}). Warm layers and gloves are recommended.`);
   } else if (tempC >= 38) {
-    score += 3; warnings.push(`Extreme heat (${fmt(tempC)}). High risk of heat stroke.`);
+    score += 3; warnings.push(`Extreme heat (${fmt(tempC)}). Heat-related health risks may rise quickly.`);
   } else if (tempC >= 32) {
-    score += 2; warnings.push(`Very hot (${fmt(tempC)}). Carry extra water and hike early.`);
+    score += 2; warnings.push(`Very hot (${fmt(tempC)}). Carry extra water and consider an early start.`);
   }
 
   if (weather.uvIndex != null) {
@@ -521,23 +521,23 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
   }
 
   if (dailyMaxWind >= 80 || windKph >= 80) {
-    score += 4; warnings.push(`Dangerous wind speeds (${Math.round(windKph)} km/h). High risk of falling or flying debris.`);
+    score += 4; warnings.push(`Very strong winds (${Math.round(windKph)} km/h). Exposed areas may be hazardous and debris risk may increase.`);
   } else if (dailyMaxWind >= 50 || windKph >= 50) {
-    score += 2; warnings.push(`Strong winds (${Math.round(windKph)} km/h) can make footing unstable on exposed ridges.`);
+    score += 2; warnings.push(`Strong winds (${Math.round(windKph)} km/h) can make footing less stable on exposed ridges.`);
   } else if (windKph >= 30) {
-    score += 1; warnings.push(`Moderate winds (${Math.round(windKph)} km/h). Be cautious on open terrain.`);
+    score += 1; warnings.push(`Moderate winds (${Math.round(windKph)} km/h). Use caution on open terrain.`);
   }
 
   if (code === 99) {
-    score += 5; warnings.push('Thunderstorm with hail reported. DO NOT hike -- seek shelter immediately.');
+    score += 5; warnings.push('Thunderstorm with hail is forecast. Based on weather data alone, hiking appears inadvisable without checking local alerts and official guidance.');
   } else if (code >= 95) {
-    score += 4; warnings.push('Active thunderstorm in the area. Lightning risk is severe on exposed trails.');
+    score += 4; warnings.push('Thunderstorm risk is present. Exposed trails may have elevated lightning risk.');
   } else if (code >= 71 && code <= 77) {
-    score += 3; warnings.push('Snowfall reported. Trails may be buried and navigation very difficult.');
+    score += 3; warnings.push('Snow is forecast. Trails may be buried and navigation may become difficult.');
   } else if ((code >= 61 && code <= 67) || precip > 5) {
-    score += 2; warnings.push('Moderate to heavy rain. Trails will be muddy and slippery.');
+    score += 2; warnings.push('Moderate to heavy rain is likely. Trails may become muddy and slippery.');
   } else if ((code >= 51 && code <= 57) || precip > 0) {
-    score += 1; warnings.push('Light rain or drizzle. Waterproof gear recommended.');
+    score += 1; warnings.push('Light rain or drizzle is possible. Waterproof gear is recommended.');
   }
 
   if (dailyPrecip >= 6 && code < 61) {
@@ -550,12 +550,12 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
 
   if (elevation >= 4000) {
     score += 2;
-    warnings.push(`Very high elevation (${Math.round(elevation)} m). Altitude sickness risk -- acclimatize first.`);
-    tips.push('Ascend slowly and watch for symptoms of altitude sickness (headache, nausea, dizziness).');
+    warnings.push(`Very high elevation (${Math.round(elevation)} m). Altitude-related symptoms may be more likely without acclimatization.`);
+    tips.push('Ascend slowly and watch for symptoms of altitude stress such as headache, nausea, or dizziness.');
   } else if (elevation >= 2500) {
     score += 1;
-    warnings.push(`High elevation (${Math.round(elevation)} m). Weather can change rapidly.`);
-    tips.push('Carry extra layers -- high-altitude weather is unpredictable.');
+    warnings.push(`High elevation (${Math.round(elevation)} m). Weather may change rapidly.`);
+    tips.push('Carry extra layers because high-altitude weather is often less predictable.');
   }
 
   if (tempC <= 5) { tips.push('Wear moisture-wicking base layers and an insulating mid-layer.'); tips.push('Pack hand warmers and keep your extremities covered.'); }
@@ -605,33 +605,33 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
   let verdict, message;
   if (score >= 7) {
     verdict = 'dangerous';
-    message = `Do NOT hike here right now. Conditions at ${weatherLabel(code)} with ${fmt(tempC)} and ${Math.round(windKph)} km/h winds make this trail extremely dangerous. Postpone your trip.`;
+    message = `Based on forecast data alone, conditions appear hazardous right now. ${weatherLabel(code)} weather, ${fmt(tempC)}, and ${Math.round(windKph)} km/h winds suggest postponing until you verify local trail status and official advisories.`;
   } else if (score >= 4) {
     verdict = 'bad';
-    message = `Not a great day to hike here. ${weatherLabel(code)} conditions, ${fmt(tempC)} temperatures, and ${Math.round(windKph)} km/h winds create significant hazards. Consider rescheduling or pick a sheltered trail.`;
+    message = `Forecast conditions suggest a poor hiking window. ${weatherLabel(code)} weather, ${fmt(tempC)} temperatures, and ${Math.round(windKph)} km/h winds may create significant hazards, so verify local conditions before going.`;
   } else if (score >= 2) {
     verdict = 'okay';
-    message = `Hikeable, but proceed with caution. Conditions are ${weatherLabel(code).toLowerCase()} at ${fmt(tempC)}. Gear up properly and stay aware of changing weather.`;
+    message = `Forecast suggests a possible hiking window, but use caution. Conditions are ${weatherLabel(code).toLowerCase()} at ${fmt(tempC)}. Prepare for changing weather and check trail-specific updates before heading out.`;
   } else {
     verdict = 'great';
-    message = `Great day to hit the trail! ${weatherLabel(code)} skies, ${fmt(tempC)} and light winds -- enjoy your hike at this location!`;
+    message = `Forecast suggests relatively favorable hiking weather at this location, with ${weatherLabel(code).toLowerCase()}, ${fmt(tempC)}, and light winds. Keep checking local conditions before you go.`;
   }
 
   if (selectedSeason === 'winter') {
     if (verdict === 'great' || verdict === 'okay') {
       verdict = 'bad';
-      message = 'Winter profile selected: hiking is not recommended right now for most trails unless you have full winter gear and route-specific experience.';
+      message = 'Winter profile selected: forecast conditions suggest hiking may be a weak choice for many trails unless you have winter gear, route-specific experience, and current local condition checks.';
     }
   }
 
   if (rainLikely && verdict === 'great') {
     verdict = 'okay';
-    message = 'Rain is likely, so this is not a great hiking window. If you still go, use waterproof gear and choose safer trail surfaces.';
+    message = 'Rain is likely, so forecast conditions are not favorable enough for the most positive rating. If you still go, use waterproof gear and choose less slippery trail surfaces.';
   }
 
   if ((tempC <= 10 || dailyMinTemp <= 5 || (weather.uvIndex != null && weather.uvIndex >= 8)) && verdict === 'great') {
     verdict = 'okay';
-    message = 'Conditions are not ideal enough for a Great rating. Use caution, protect against temperature and UV exposure, and choose route difficulty carefully.';
+    message = 'Forecast conditions are not mild enough for the most positive rating. Use caution, protect against temperature and UV exposure, and choose route difficulty carefully.';
   }
 
   const recommendation = buildRecommendation(weather, selectedSeason, selectedDate);
@@ -924,7 +924,7 @@ function renderMoreInsights(geo, weather, verdict, selectedDate = '') {
     const place = `${geo?.name || ''} ${geo?.sub || ''}`.trim();
     const encoded = encodeURIComponent(place);
     linksEl.innerHTML = [
-      `<a href="https://www.google.com/search?q=${encoded}+trail+reviews" target="_blank" rel="noopener noreferrer">Google Reviews</a>`,
+      `<a href="https://www.google.com/search?q=${encoded}+trail+conditions" target="_blank" rel="noopener noreferrer">Google Search</a>`,
       `<a href="https://www.alltrails.com/search?q=${encoded}" target="_blank" rel="noopener noreferrer">AllTrails</a>`,
       `<a href="https://www.tripadvisor.com/Search?q=${encoded}" target="_blank" rel="noopener noreferrer">Tripadvisor</a>`
     ].join('');
@@ -935,13 +935,14 @@ function buildCredibleNotes(geo, weather, verdict, selectedDate = '') {
   const notes = [];
   const place = `${geo?.name || 'This location'}${geo?.sub ? ` (${geo.sub})` : ''}`;
 
-  notes.push(`Data source: Open-Meteo forecast for ${place}.`);
-  notes.push('Geocoding source: Nominatim/Open-Meteo place matching.');
+  notes.push(`Forecast data source: Open-Meteo for ${place}.`);
+  notes.push('Location matching uses Open-Meteo geocoding and may occasionally resolve to a nearby place instead of the exact trailhead.');
   if (selectedDate) {
     notes.push(`Planned hike date: ${formatSelectedDate(selectedDate)}.`);
   }
-  notes.push(`Current safety verdict: ${verdict.toUpperCase()} based on measurable weather fields (temperature, precipitation, wind, UV, and elevation).`);
-  notes.push('Community reviews are not generated in-app. Use the links below to read real user reviews and trail reports.');
+  notes.push(`Current safety verdict: ${verdict.toUpperCase()} from a simple rules-based check using weather fields such as temperature, precipitation, wind, UV, and elevation.`);
+  notes.push('These notes are automated summaries, not official trail reports, ranger advice, or a guarantee of on-trail conditions.');
+  notes.push('External links are provided for additional research only. Review quality and accuracy vary by source.');
 
   return notes;
 }

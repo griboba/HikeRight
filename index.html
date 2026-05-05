@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>HikeRight – Is It Safe to Hike?</title>
+  <title>HikeRight – Weather-Based Hike Planner</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -12,10 +12,14 @@
       <span class="logo-icon">⛰️</span>
       <span class="logo-text">HikeRight</span>
     </div>
-    <p class="tagline">Check conditions before you hit the trail.</p>
+    <p class="tagline">Check forecast conditions before you hit the trail.</p>
   </header>
 
   <main>
+    <div class="disclaimer-banner">
+      <p><strong>Info only:</strong> HikeRight shows forecast data and weather-based guidance, not verified trail conditions or official safety determinations.</p>
+    </div>
+
     <div class="season-banner">
       <label for="seasonSelect">Trip Season</label>
       <select id="seasonSelect">
@@ -42,7 +46,7 @@
         <label for="hikeDateInput">When are you hiking?</label>
         <input type="date" id="hikeDateInput" />
       </div>
-      <p class="hint">Search any place worldwide and we will check live weather safety.</p>
+      <p class="hint">Search any place worldwide and we will show live forecast data with weather-based hiking guidance.</p>
     </div>
 
     <!-- FEATURED HIKES -->

@@ -174,11 +174,11 @@ function selectDate(isoDate) {
     plannerSafetyLevel.textContent = 'Unknown';
     plannerBetterDate.textContent = closestGoodDateText(weather.forecastDates[0], weather);
     plannerVerdict.className = 'verdict-message okay';
-    plannerVerdict.textContent = 'Chosen date is outside the 7-day forecast. Safety cannot be verified yet. Pick a nearby forecast date for a reliable warning.';
+    plannerVerdict.textContent = 'Chosen date is outside the 7-day forecast window. Weather-based risk cannot be estimated yet. Pick a nearby forecast date for a clearer warning.';
     renderWarnings([
       'This date is outside the available forecast range.',
       'Weather can shift quickly before this date.',
-      'Use a date inside the custom forecast calendar for credible warning output.'
+      'Use a date inside the custom forecast calendar for forecast-based warning output.'
     ]);
     return;
   }
