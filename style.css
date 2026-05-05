@@ -703,6 +703,14 @@ footer {
   border-top: 1px solid var(--border);
 }
 
+.disclaimer-note {
+  margin: 0.55rem auto 0;
+  max-width: 920px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: #5f6f5f;
+}
+
 /* UTIL */
 .hidden { display: none !important; }
 
@@ -756,6 +764,7 @@ footer {
   margin: 0;
 }
 
+.planner-calendar-wrap {
   background: var(--card2);
   border: 1px solid var(--border);
   border-radius: 12px;

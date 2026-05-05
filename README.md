@@ -55,6 +55,13 @@ http://localhost:8000/
 - Forecast guidance is based on a 7-day weather window.
 - For dates outside the forecast range, safety will be shown as limited/unknown until forecast data is available.
 
+## Safety Disclaimer
+
+HikeRight is for informational purposes only and is not an authoritative safety source.
+Weather and trail conditions can change quickly. Always verify forecasts, official advisories,
+trail closures, and local ranger guidance before hiking. You are responsible for your own
+planning decisions and personal safety.
+
 ## License
 
 Add your preferred license in a `LICENSE` file (MIT is a common choice for public projects).
