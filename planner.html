@@ -4,7 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>HikeRight - Date Planner</title>
-  <link rel="manifest" href="manifest.webmanifest" />
+  <script>
+    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = 'manifest.webmanifest';
+      document.head.appendChild(manifestLink);
+    }
+  </script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body data-page="planner">
@@ -12,7 +19,6 @@
     <div class="settings-shell" id="settingsShell">
       <button id="settingsToggleBtn" class="settings-toggle" type="button" aria-label="Open settings" aria-expanded="false">⚙</button>
       <div id="settingsPopover" class="settings-popover hidden">
-        <p class="settings-title">Preferences</p>
         <div class="settings-group">
           <p class="settings-group-title">Display</p>
           <div class="settings-grid">

@@ -1540,7 +1540,7 @@ function renderSafetyLifeline(geo, weather, verdict, recommendation) {
   renderNoaaAlerts(geo);
   bindOfflinePack(geo, weather, verdict, recommendation);
   bindCoverageTracker();
-  bindResourceCalculator(weather, geo);
+  bindResourceCalculator(weather, geo, verdict);
   setupRouteMapAndDirections(geo);
   renderEssentialsChecklist();
   renderCoverageHeatmap();
@@ -1788,7 +1788,23 @@ function coverageQuality(point) {
   return 1;
 }
 
-function bindResourceCalculator(weather, geo) {
+function suggestDefaultDistanceMiles(weather, verdict = 'okay') {
+  let miles = 6;
+  const elev = Number(weather?.elevation) || 0;
+  const wind = Number(weather?.dailyMaxWind || weather?.windKph) || 0;
+  const precip = Number(weather?.dailyPrecip || weather?.precip) || 0;
+  if (elev >= 3200) miles -= 2;
+  else if (elev >= 2200) miles -= 1;
+  if (wind >= 60) miles -= 1.5;
+  else if (wind >= 40) miles -= 0.8;
+  if (precip >= 10) miles -= 1.2;
+  else if (precip >= 5) miles -= 0.6;
+  if (verdict === 'dangerous') miles -= 1.5;
+  else if (verdict === 'bad') miles -= 0.8;
+  return Math.max(2, Math.min(12, Math.round(miles * 2) / 2));
+}
+
+function bindResourceCalculator(weather, geo, verdict = 'okay') {
   const tripInput = document.getElementById('tripHoursInput');
   const bufferInput = document.getElementById('bufferMinsInput');
   const distanceInput = document.getElementById('distanceMilesInput');
@@ -1808,6 +1824,11 @@ function bindResourceCalculator(weather, geo) {
   };
 
   let customModeActive = false;
+
+  const currentDistance = Number(distanceInput.value);
+  if (!Number.isFinite(currentDistance) || currentDistance === 6) {
+    distanceInput.value = String(suggestDefaultDistanceMiles(weather, verdict));
+  }
 
   const setActivePaceButton = (mode) => {
     paceButtons.forEach((btn) => {
@@ -1962,13 +1983,22 @@ function setupRouteMapAndDirections(geo) {
   if (!geo || !mapFrame || !dirBtn || !mapLink || !status) return;
 
   const destination = `${geo.lat},${geo.lon}`;
-  mapFrame.src = `https://www.google.com/maps?q=${encodeURIComponent(destination)}&z=14&output=embed`;
   mapLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`;
 
   dirBtn.onclick = () => {
     const base = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=walking`;
     window.open(base, '_blank', 'noopener');
   };
+
+  if (isFileOrigin) {
+    // file:// pages run in strict unique-origin mode; keep navigation as external links only.
+    mapFrame.classList.add('hidden');
+    status.textContent = 'Local file mode: map embed disabled by browser security. Use Open Walking Directions / Open Google Map.';
+    return;
+  }
+
+  mapFrame.classList.remove('hidden');
+  mapFrame.src = `https://www.google.com/maps?q=${encodeURIComponent(destination)}&z=14&output=embed`;
 
   if (!navigator.geolocation) {
     status.textContent = 'Approach distance: location not available on this device.';
@@ -1978,7 +2008,9 @@ function setupRouteMapAndDirections(geo) {
   navigator.geolocation.getCurrentPosition((pos) => {
     const origin = `${pos.coords.latitude},${pos.coords.longitude}`;
     const miles = haversineMiles(pos.coords.latitude, pos.coords.longitude, geo.lat, geo.lon);
-    status.textContent = `Approach distance (straight-line): ${miles.toFixed(1)} miles. Open directions for exact route distance.`;
+    status.textContent = `Approach distance (straight-line): ${miles.toFixed(1)} miles. Route directions loaded below.`;
+    mapFrame.src = `https://www.google.com/maps?saddr=${encodeURIComponent(origin)}&daddr=${encodeURIComponent(destination)}&output=embed`;
+    mapLink.href = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=walking`;
     dirBtn.onclick = () => {
       const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=walking`;
       window.open(url, '_blank', 'noopener');

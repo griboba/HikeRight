@@ -4,7 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>HikeRight – Weather-Based Hike Planner</title>
-  <link rel="manifest" href="manifest.webmanifest" />
+    <script>
+      if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = 'manifest.webmanifest';
+        document.head.appendChild(manifestLink);
+      }
+    </script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
