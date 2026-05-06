@@ -1903,13 +1903,13 @@ function suggestDefaultDistanceMiles(weather, verdict = 'okay') {
 function getKnownTrailProfile(geo) {
   const text = `${geo?.name || ''} ${geo?.sub || ''}`.toLowerCase();
   const known = [
-    { test: /appalachian trail/, miles: 2197, source: 'Appalachian Trail Conservancy' },
+    { test: /appalachian trail/, miles: 2197.4, source: 'Appalachian Trail Conservancy (A.T. mileage updates)' },
     { test: /pacific crest trail/, miles: 2650, source: 'Pacific Crest Trail Association' },
     { test: /continental divide trail/, miles: 3100, source: 'Continental Divide Trail Coalition' },
     { test: /arizona trail/, miles: 800, source: 'Arizona Trail Association' },
     { test: /ice age trail/, miles: 1200, source: 'Ice Age Trail Alliance' },
-    { test: /john muir trail/, miles: 211, source: 'U.S. Forest Service / NPS route references' },
-    { test: /long trail/, miles: 273, source: 'Green Mountain Club' }
+    { test: /john muir trail/, miles: 211, source: 'PCTA JMT guide / USFS references' },
+    { test: /long trail/, miles: 272, source: 'Green Mountain Club' }
   ];
 
   const hit = known.find((item) => item.test.test(text));
@@ -1949,7 +1949,7 @@ function bindResourceCalculator(weather, geo, verdict = 'okay') {
   if (shouldAutoSet) {
     if (knownTrailLengthMiles) {
       distanceInput.max = String(Math.max(80, Math.ceil(knownTrailLengthMiles)));
-      distanceInput.step = '1';
+      distanceInput.step = '0.1';
       distanceInput.value = String(knownTrailLengthMiles);
     } else {
       distanceInput.max = '80';
