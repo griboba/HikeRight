@@ -154,7 +154,7 @@ function renderCalendar(forecastDates) {
     btn.innerHTML = `
       <span class="planner-day-week">${weekday}</span>
       <span class="planner-day-date">${label}</span>
-      <span class="planner-day-risk">${profile.level} • ${profile.warnings.length} warning${profile.warnings.length === 1 ? '' : 's'}</span>
+      <span class="planner-day-risk">${plannerLevelLabel(profile.level)} • ${profile.warnings.length} warning${profile.warnings.length === 1 ? '' : 's'}</span>
     `;
     btn.addEventListener('click', () => {
       plannerDateInput.value = isoDate;
@@ -188,7 +188,7 @@ function selectDate(isoDate) {
     return;
   }
 
-  plannerSafetyLevel.textContent = profile.level;
+  plannerSafetyLevel.textContent = plannerLevelLabel(profile.level);
 
   if (profile.level === 'Good') {
     plannerBetterDate.textContent = 'Your chosen date is already strong';
@@ -272,7 +272,7 @@ function closestGoodDateText(chosenIsoDate, wx) {
       }
     });
 
-    return `${formatDateLong(best.date)} (${best.level})`;
+    return `${formatDateLong(best.date)} (${plannerLevelLabel(best.level)})`;
   }
 
   const sorted = profiles
@@ -280,7 +280,13 @@ function closestGoodDateText(chosenIsoDate, wx) {
     .sort((a, b) => a.score - b.score);
 
   if (!sorted.length) return 'No nearby forecast date available';
-  return `${formatDateLong(sorted[0].date)} (${sorted[0].level})`;
+  return `${formatDateLong(sorted[0].date)} (${plannerLevelLabel(sorted[0].level)})`;
+}
+
+function plannerLevelLabel(level) {
+  if (level === 'Good') return 'Excellent';
+  if (level === 'Caution') return 'Try Again Other Day';
+  return 'Hazardous';
 }
 
 function renderWarnings(items) {

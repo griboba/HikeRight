@@ -27,6 +27,10 @@ const placeCountEl = document.getElementById('placeCount');
 const isResultPage = document.body && document.body.dataset.page === 'result';
 const isFileOrigin = window.location.protocol === 'file:';
 const SETTINGS_KEY = 'hikeRightSettings';
+const GEOCODE_CACHE_KEY = 'hikeRightGeocodeCacheV1';
+const WEATHER_CACHE_KEY = 'hikeRightWeatherCacheV1';
+const GEOCODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const WEATHER_TTL_MS = 20 * 60 * 1000;
 const userSettings = loadUserSettings();
 
 document.documentElement.lang = userSettings.language;
@@ -46,7 +50,7 @@ document.querySelectorAll('.hike-tab').forEach(tab => {
   });
 });
 
-setupPlaceOrganizer();
+deferPlaceOrganizerSetup();
 setupMoreToggle();
 setupHikeDateInput();
 setupSettingsPanel();
@@ -138,6 +142,15 @@ function setupHikeDateInput() {
   const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   hikeDateInput.min = iso;
   if (!hikeDateInput.value) hikeDateInput.value = iso;
+}
+
+function deferPlaceOrganizerSetup() {
+  const runSetup = () => setupPlaceOrganizer();
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(runSetup, { timeout: 250 });
+    return;
+  }
+  window.setTimeout(runSetup, 0);
 }
 
 function setupSettingsPanel() {
@@ -519,10 +532,18 @@ async function geocode(query) {
     ? [primary, simple]
     : [primary];
 
+  for (const q of queries) {
+    const cached = getCacheEntry(GEOCODE_CACHE_KEY, q.toLowerCase(), GEOCODE_TTL_MS);
+    if (cached) return cached;
+  }
+
   // Open-Meteo geocoding is browser-friendly and should be used first.
   for (const q of queries) {
     const hit = await geocodeWithOpenMeteo(q);
-    if (hit) return hit;
+    if (hit) {
+      setCacheEntry(GEOCODE_CACHE_KEY, q.toLowerCase(), hit);
+      return hit;
+    }
   }
 
   // Nominatim often blocks file:// origins and can rate-limit; keep as best-effort fallback.
@@ -530,7 +551,10 @@ async function geocode(query) {
 
   for (const q of queries) {
     const hit = await geocodeWithNominatim(q);
-    if (hit) return hit;
+    if (hit) {
+      setCacheEntry(GEOCODE_CACHE_KEY, q.toLowerCase(), hit);
+      return hit;
+    }
   }
 
   return null;
@@ -543,7 +567,7 @@ async function geocodeWithNominatim(query) {
     const timer = setTimeout(() => controller.abort(), 4000);
     let res;
     try {
-      res = await fetch(url, { headers: { 'Accept-Language': 'en' }, signal: controller.signal });
+      res = await fetch(url, { headers: { 'Accept-Language': getLanguageCode() }, signal: controller.signal });
     } finally {
       clearTimeout(timer);
     }
@@ -598,17 +622,21 @@ async function geocodeWithOpenMeteo(query) {
 
 // --- WEATHER ---
 async function getWeather(lat, lon) {
+  const weatherKey = `${Math.round(lat * 1000) / 1000},${Math.round(lon * 1000) / 1000},${getLanguageCode()}`;
+  const cached = getCacheEntry(WEATHER_CACHE_KEY, weatherKey, WEATHER_TTL_MS);
+  if (cached) return cached;
+
   const url = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${lat}&longitude=${lon}`
     + `&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day,relative_humidity_2m`
     + `&daily=sunrise,sunset,precipitation_sum,wind_speed_10m_max,temperature_2m_max,temperature_2m_min,weather_code,uv_index_max`
     + `&timezone=auto`
     + `&forecast_days=7`;
-  const res  = await fetch(url);
+  const res = await fetchWithTimeout(url, {}, 6000);
   const data = await res.json();
   const c = data.current;
   const d = data.daily;
-  return {
+  const payload = {
     elevation:    data.elevation,
     tempC:        c.temperature_2m,
     feelsLike:    c.apparent_temperature,
@@ -632,6 +660,56 @@ async function getWeather(lat, lon) {
     forecastMaxWindKph: d.wind_speed_10m_max,
     forecastWeatherCode: d.weather_code,
   };
+
+  setCacheEntry(WEATHER_CACHE_KEY, weatherKey, payload);
+  return payload;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+    return response;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+function getCacheEntry(cacheKey, key, ttlMs) {
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if (!raw) return null;
+    const store = JSON.parse(raw);
+    const hit = store[key];
+    if (!hit || typeof hit.ts !== 'number') return null;
+    if (Date.now() - hit.ts > ttlMs) return null;
+    return hit.value;
+  } catch {
+    return null;
+  }
+}
+
+function setCacheEntry(cacheKey, key, value) {
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    const store = raw ? JSON.parse(raw) : {};
+    store[key] = { ts: Date.now(), value };
+
+    // Keep cache bounded to avoid unbounded growth.
+    const keys = Object.keys(store);
+    if (keys.length > 120) {
+      keys
+        .sort((a, b) => (store[a]?.ts || 0) - (store[b]?.ts || 0))
+        .slice(0, keys.length - 100)
+        .forEach(oldKey => delete store[oldKey]);
+    }
+
+    localStorage.setItem(cacheKey, JSON.stringify(store));
+  } catch {
+    // Ignore cache failures.
+  }
 }
 
 // --- WEATHER CODE -> LABEL ---
@@ -676,9 +754,11 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
     if (weather.uvIndex >= 11) {
       score += 2;
       warnings.push(`Extreme UV index (${weather.uvIndex.toFixed(1)}). Sun exposure risk is high.`);
-    } else if (weather.uvIndex >= 8) {
+    } else if (weather.uvIndex >= 9) {
       score += 1;
       warnings.push(`Very high UV index (${weather.uvIndex.toFixed(1)}). Sun protection is required.`);
+    } else if (weather.uvIndex >= 7) {
+      warnings.push(`High UV index (${weather.uvIndex.toFixed(1)}). Use sun protection.`);
     }
   }
 
@@ -794,9 +874,15 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
     message = 'Rain is likely, so forecast conditions are not favorable enough for the most positive rating. If you still go, use waterproof gear and choose less slippery trail surfaces.';
   }
 
-  if ((tempC <= 10 || dailyMinTemp <= 5 || (weather.uvIndex != null && weather.uvIndex >= 8)) && verdict === 'great') {
+  if ((
+    tempC <= 10
+    || dailyMinTemp <= 5
+    || windKph >= 30
+    || dailyMaxWind >= 35
+    || (weather.uvIndex != null && weather.uvIndex >= 9)
+  ) && verdict === 'great') {
     verdict = 'okay';
-    message = 'Forecast conditions are not mild enough for the most positive rating. Use caution, protect against temperature and UV exposure, and choose route difficulty carefully.';
+    message = 'Forecast conditions suggest a possible hiking window, but caution is recommended due to wind, temperature, or UV exposure. Prepare gear carefully and verify local trail conditions before heading out.';
   }
 
   const recommendation = buildRecommendation(weather, selectedSeason, selectedDate);
@@ -910,7 +996,7 @@ function buildRecommendation(weather, selectedSeason = 'auto', selectedDate = ''
     end = Math.min(end, 10 * 60 + 30); // 10:30 AM hard cap
   }
 
-  if (end <= start) {
+  if (end <= start || (end - start) < 45) {
     start = baseStart;
     end = baseEnd;
   }
@@ -960,8 +1046,25 @@ function formatSelectedDate(isoDate) {
 }
 
 function timeToMinutes(hhmm) {
-  if (!hhmm || !hhmm.includes(':')) return null;
-  const [h, m] = hhmm.split(':').map(n => parseInt(n, 10));
+  if (!hhmm || typeof hhmm !== 'string') return null;
+  const trimmed = hhmm.trim();
+
+  // Handles strings like "8:23 PM".
+  const ampmMatch = trimmed.match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+  if (ampmMatch) {
+    let hour = parseInt(ampmMatch[1], 10);
+    const minute = parseInt(ampmMatch[2], 10);
+    const ampm = ampmMatch[3].toUpperCase();
+    if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+    if (ampm === 'PM' && hour !== 12) hour += 12;
+    if (ampm === 'AM' && hour === 12) hour = 0;
+    return hour * 60 + minute;
+  }
+
+  // Handles ISO-like strings such as "2026-05-05T18:23".
+  const timePart = trimmed.includes('T') ? trimmed.split('T')[1] : trimmed;
+  if (!timePart || !timePart.includes(':')) return null;
+  const [h, m] = timePart.split(':').map(n => parseInt(n, 10));
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
   return h * 60 + m;
 }
@@ -1004,7 +1107,7 @@ function renderResult(geo, weather, selectedSeason = 'auto', selectedDate = '') 
   }
 
   const badge = document.getElementById('verdictBadge');
-  badge.textContent = verdict === 'great' ? 'Great' : verdict === 'okay' ? 'Use Caution' : verdict === 'bad' ? 'Not Recommended' : 'Dangerous';
+  badge.textContent = verdictDisplayLabel(verdict);
   badge.className = `verdict-badge ${verdict}`;
 
   const msgEl = document.getElementById('verdictMessage');
@@ -1287,6 +1390,13 @@ function weatherIcon(code, isDay) {
   if (code <= 86)  return '\uD83C\uDF28\uFE0F';
   if (code >= 95)  return '\u26C8\uFE0F';
   return '\uD83C\uDF21\uFE0F';
+}
+
+function verdictDisplayLabel(verdict) {
+  if (verdict === 'great') return 'Awesome';
+  if (verdict === 'okay') return 'Excellent';
+  if (verdict === 'bad') return 'Try Again Other Day';
+  return 'Hazardous';
 }
 
 function uvLabel(uv) {
