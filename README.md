@@ -1,4 +1,5 @@
-# HikeRight
+👋 Hi I'm Griboba
+I Am Going To Present... HikeRight!
 
 HikeRight is a lightweight hiking weather and safety web app.
 
