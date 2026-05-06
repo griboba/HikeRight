@@ -798,6 +798,7 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
   let   score    = 0;
   const rainLikely = dailyPrecip >= 2 || (code >= 51 && code <= 82) || precip > 0.2;
   const uvRelevantNow = isUvRelevantForCurrentContext(weather, selectedDate);
+  const coldAndNotSunny = (tempC <= 10 || dailyMinTemp <= 5) && code >= 3 && code < 45;
 
   if (tempC <= -20 || dailyMinTemp <= -20) {
     score += 4; warnings.push(`Extremely cold weather (${fmt(tempC)}). Frostbite risk may be elevated for exposed skin.`);
@@ -816,12 +817,20 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
   if (weather.uvIndex != null && uvRelevantNow) {
     if (weather.uvIndex >= 11) {
       score += 2;
-      warnings.push(`Extreme UV index (${weather.uvIndex.toFixed(1)}). Sun exposure risk is high.`);
+      if (coldAndNotSunny) {
+        warnings.push(`Extreme UV index (${weather.uvIndex.toFixed(1)}) despite cold/cloudy conditions. Keep basic sun protection.`);
+      } else {
+        warnings.push(`Extreme UV index (${weather.uvIndex.toFixed(1)}). Sun exposure risk is high.`);
+      }
     } else if (weather.uvIndex >= 9) {
-      score += 1;
-      warnings.push(`Very high UV index (${weather.uvIndex.toFixed(1)}). Sun protection is required.`);
+      if (!coldAndNotSunny) {
+        score += 1;
+        warnings.push(`Very high UV index (${weather.uvIndex.toFixed(1)}). Sun protection is required.`);
+      }
     } else if (weather.uvIndex >= 7) {
-      warnings.push(`High UV index (${weather.uvIndex.toFixed(1)}). Use sun protection.`);
+      if (!coldAndNotSunny) {
+        warnings.push(`High UV index (${weather.uvIndex.toFixed(1)}). Use sun protection.`);
+      }
     }
   }
 
@@ -942,7 +951,7 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
     || dailyMinTemp <= 5
     || windKph >= 30
     || dailyMaxWind >= 35
-    || (weather.uvIndex != null && weather.uvIndex >= 9 && uvRelevantNow)
+    || (weather.uvIndex != null && weather.uvIndex >= 9 && uvRelevantNow && !coldAndNotSunny)
   ) && verdict === 'great') {
     verdict = 'okay';
     message = 'Forecast conditions suggest a possible hiking window, but caution is recommended due to wind, temperature, or UV exposure. Prepare gear carefully and verify local trail conditions before heading out.';
