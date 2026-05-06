@@ -12,6 +12,25 @@
       document.head.appendChild(manifestLink);
     }
   </script>
+  <script>
+    if (window.location.protocol === 'file:') {
+      const hardenFrames = () => {
+        document.querySelectorAll('iframe').forEach((frame) => {
+          const src = (frame.getAttribute('src') || '').trim().toLowerCase();
+          if (!src || src.startsWith('file:')) {
+            frame.setAttribute('src', 'about:blank');
+            frame.classList.add('hidden');
+          }
+        });
+      };
+
+      document.addEventListener('DOMContentLoaded', () => {
+        hardenFrames();
+        const observer = new MutationObserver(() => hardenFrames());
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+      });
+    }
+  </script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body data-page="planner">

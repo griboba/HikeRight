@@ -1202,6 +1202,7 @@ function localTodayIso() {
 
 function isUvRelevantForCurrentContext(weather, selectedDate = '') {
   const targetDate = selectedDate ? selectedDate.slice(0, 10) : localTodayIso();
+  // For non-today dates we don't have an exact check time, so keep UV potentially relevant.
   if (targetDate !== localTodayIso()) return true;
 
   const sunriseMins = timeToMinutes(weather.sunrise);
@@ -1210,8 +1211,12 @@ function isUvRelevantForCurrentContext(weather, selectedDate = '') {
 
   const now = new Date();
   const nowMins = now.getHours() * 60 + now.getMinutes();
-  // Only treat UV as high-priority in a peak daylight window.
-  return nowMins >= (sunriseMins + 120) && nowMins <= (sunsetMins - 90);
+
+  // Suppress UV protection prompts in early morning/late evening.
+  // Start UV advisories roughly mid-morning, and stop before dusk.
+  const uvStart = sunriseMins + 180;
+  const uvEnd = sunsetMins - 120;
+  return nowMins >= uvStart && nowMins <= uvEnd;
 }
 
 function timeToMinutes(hhmm) {
@@ -1936,7 +1941,6 @@ function bindResourceCalculator(weather, geo, verdict = 'okay') {
   };
 
   let customModeActive = false;
-  let distanceManuallySet = false;
   const knownTrailProfile = getKnownTrailProfile(geo);
   const knownTrailLengthMiles = knownTrailProfile ? knownTrailProfile.miles : null;
 
@@ -1948,6 +1952,8 @@ function bindResourceCalculator(weather, geo, verdict = 'okay') {
       distanceInput.step = '1';
       distanceInput.value = String(knownTrailLengthMiles);
     } else {
+      distanceInput.max = '80';
+      distanceInput.step = '0.5';
       distanceInput.value = String(suggestDefaultDistanceMiles(weather, verdict));
     }
   }
@@ -2018,11 +2024,7 @@ function bindResourceCalculator(weather, geo, verdict = 'okay') {
     if (summaryTotalEl) summaryTotalEl.textContent = formatDurationHours(totalHours);
     if (summaryDistanceNoteEl) {
       if (knownTrailLengthMiles) {
-        if (!distanceManuallySet && Math.abs(distanceMiles - knownTrailLengthMiles) < 0.2) {
-          summaryDistanceNoteEl.textContent = `Using known full-trail length: about ${knownTrailLengthMiles.toLocaleString()} miles (${knownTrailProfile.source}). Change distance below if you only want one segment.`;
-        } else {
-          summaryDistanceNoteEl.textContent = `Custom segment set to ${distanceMiles.toFixed(1)} miles at ${paceMph.toFixed(1)} mph plus short breaks. Full trail is about ${knownTrailLengthMiles.toLocaleString()} miles.`;
-        }
+        summaryDistanceNoteEl.textContent = `Using known full-trail distance: about ${knownTrailLengthMiles.toLocaleString()} miles (${knownTrailProfile.source}). Adjust distance below only if you want to model a shorter segment.`;
       } else {
         summaryDistanceNoteEl.textContent = `Distance used for estimate: ${distanceMiles.toFixed(1)} miles at ${paceMph.toFixed(1)} mph plus short breaks.`;
       }
@@ -2031,10 +2033,7 @@ function bindResourceCalculator(weather, geo, verdict = 'okay') {
 
   tripInput.oninput = recalc;
   bufferInput.oninput = recalc;
-  distanceInput.oninput = () => {
-    distanceManuallySet = true;
-    recalc();
-  };
+  distanceInput.oninput = recalc;
   paceInput.oninput = () => {
     syncPaceSelectFromInput();
     recalc();
