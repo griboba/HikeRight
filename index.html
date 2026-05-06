@@ -8,11 +8,43 @@
 </head>
 <body>
   <header>
+    <div class="settings-shell" id="settingsShell">
+      <button id="settingsToggleBtn" class="settings-toggle" type="button" aria-label="Open settings" aria-expanded="false">⚙</button>
+      <div id="settingsPopover" class="settings-popover hidden">
+        <p class="settings-title">Preferences</p>
+        <div class="settings-grid">
+          <label>
+            Language
+            <select id="settingLanguage">
+              <option value="en-US">English (US)</option>
+              <option value="es-ES">Espanol</option>
+              <option value="fr-FR">Francais</option>
+            </select>
+          </label>
+          <label>
+            Units
+            <select id="settingUnits">
+              <option value="us">US (F, mph, in)</option>
+              <option value="metric">Metric (C, km/h, mm)</option>
+            </select>
+          </label>
+          <label>
+            Trail Focus
+            <select id="settingLocalFocus">
+              <option value="us">Local-first (U.S.)</option>
+              <option value="global">Global</option>
+            </select>
+          </label>
+        </div>
+        <p id="settingsSavedNote" class="settings-saved-note hidden">Saved</p>
+      </div>
+    </div>
+
     <div class="logo">
       <span class="logo-icon">⛰️</span>
       <span class="logo-text">HikeRight</span>
     </div>
-    <p class="tagline">Check forecast conditions before you hit the trail.</p>
+    <p class="tagline">Check forecast conditions before you hit the trail near you.</p>
   </header>
 
   <main>
@@ -40,18 +72,19 @@
           placeholder="e.g. Mount Rainier, Appalachian Trail, Rocky Mountain National Park..."
           autocomplete="off"
         />
+        <button id="nearMeBtn" type="button">Use My Location</button>
         <button id="checkBtn">Check It</button>
       </div>
       <div class="date-row">
         <label for="hikeDateInput">When are you hiking?</label>
         <input type="date" id="hikeDateInput" />
       </div>
-      <p class="hint">Search any place worldwide and we will show live forecast data with weather-based hiking guidance.</p>
+      <p class="hint">Start with local U.S. trails or search any place worldwide for live forecast-based hiking guidance.</p>
     </div>
 
     <!-- FEATURED HIKES -->
     <div class="featured-section">
-      <p class="featured-label">Global Hike Browser</p>
+      <p class="featured-label">Local-First Hike Browser</p>
       <div class="place-organizer">
         <label for="placeContinent">Continent</label>
         <select id="placeContinent">

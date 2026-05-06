@@ -143,14 +143,19 @@ function renderCalendar(forecastDates) {
   forecastDates.forEach(isoDate => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'planner-day-btn';
+    const profile = evaluateForecastDate(isoDate);
+    btn.className = `planner-day-btn risk-${profile.level.toLowerCase()}`;
     btn.dataset.date = isoDate;
 
     const dateObj = new Date(`${isoDate}T12:00:00`);
     const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
     const label = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-    btn.innerHTML = `<span class="planner-day-week">${weekday}</span><span class="planner-day-date">${label}</span>`;
+    btn.innerHTML = `
+      <span class="planner-day-week">${weekday}</span>
+      <span class="planner-day-date">${label}</span>
+      <span class="planner-day-risk">${profile.level} • ${profile.warnings.length} warning${profile.warnings.length === 1 ? '' : 's'}</span>
+    `;
     btn.addEventListener('click', () => {
       plannerDateInput.value = isoDate;
       selectDate(isoDate);
@@ -237,6 +242,11 @@ function evaluateForecastDate(isoDate) {
   else if (code >= 61 && code <= 67) { score += 1; warnings.push('Rain conditions expected during this date.'); }
 
   if (!warnings.length) warnings.push('No major weather red flags detected in the current forecast.');
+
+  if ((weather.elevation ?? 0) >= 4500) {
+    score += 2;
+    warnings.push('Extreme elevation increases altitude-related risk, even on clear forecast days.');
+  }
 
   const level = score <= 1 ? 'Good' : score <= 3 ? 'Caution' : 'Bad';
   return { level, score, warnings };

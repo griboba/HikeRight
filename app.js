@@ -3,9 +3,17 @@
 //       Open-Meteo for weather                   [free, no key]
 
 const input   = document.getElementById('locationInput');
+const nearMeBtn = document.getElementById('nearMeBtn');
 const btn     = document.getElementById('checkBtn');
 const hikeDateInput = document.getElementById('hikeDateInput');
 const seasonSelect = document.getElementById('seasonSelect');
+const settingLanguage = document.getElementById('settingLanguage');
+const settingUnits = document.getElementById('settingUnits');
+const settingLocalFocus = document.getElementById('settingLocalFocus');
+const settingsSavedNote = document.getElementById('settingsSavedNote');
+const settingsShell = document.getElementById('settingsShell');
+const settingsToggleBtn = document.getElementById('settingsToggleBtn');
+const settingsPopover = document.getElementById('settingsPopover');
 const loading = document.getElementById('loadingState');
 const errorEl = document.getElementById('errorState');
 const errorMsg= document.getElementById('errorMsg');
@@ -18,10 +26,15 @@ const countrySelect = document.getElementById('placeCountry');
 const placeCountEl = document.getElementById('placeCount');
 const isResultPage = document.body && document.body.dataset.page === 'result';
 const isFileOrigin = window.location.protocol === 'file:';
+const SETTINGS_KEY = 'hikeRightSettings';
+const userSettings = loadUserSettings();
+
+document.documentElement.lang = userSettings.language;
 
 let runInFlight = false;
 
 if (btn) btn.addEventListener('click', run);
+if (nearMeBtn) nearMeBtn.addEventListener('click', runNearMe);
 if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
 
 document.querySelectorAll('.hike-tab').forEach(tab => {
@@ -36,6 +49,7 @@ document.querySelectorAll('.hike-tab').forEach(tab => {
 setupPlaceOrganizer();
 setupMoreToggle();
 setupHikeDateInput();
+setupSettingsPanel();
 
 if (seasonSelect) {
   seasonSelect.addEventListener('change', setupSeasonBadges);
@@ -126,6 +140,139 @@ function setupHikeDateInput() {
   if (!hikeDateInput.value) hikeDateInput.value = iso;
 }
 
+function setupSettingsPanel() {
+  if (!settingLanguage || !settingUnits || !settingLocalFocus) return;
+
+  settingLanguage.value = userSettings.language;
+  settingUnits.value = userSettings.units;
+  settingLocalFocus.value = userSettings.localFocus;
+
+  const applyAndSave = () => {
+    userSettings.language = settingLanguage.value;
+    userSettings.units = settingUnits.value;
+    userSettings.localFocus = settingLocalFocus.value;
+    saveUserSettings(userSettings);
+    document.documentElement.lang = userSettings.language;
+
+    if (settingsSavedNote) {
+      settingsSavedNote.classList.remove('hidden');
+      window.setTimeout(() => settingsSavedNote.classList.add('hidden'), 1200);
+    }
+
+    if (continentSelect && countrySelect) {
+      if (userSettings.localFocus === 'us') {
+        if (Array.from(continentSelect.options).some(option => option.value === 'North America')) {
+          continentSelect.value = 'North America';
+          continentSelect.dispatchEvent(new Event('change'));
+        }
+        if (Array.from(countrySelect.options).some(option => option.value === 'USA')) {
+          countrySelect.value = 'USA';
+          countrySelect.dispatchEvent(new Event('change'));
+        }
+      } else {
+        continentSelect.value = 'all';
+        continentSelect.dispatchEvent(new Event('change'));
+        countrySelect.value = 'all';
+        countrySelect.dispatchEvent(new Event('change'));
+      }
+    }
+
+    if (isResultPage) hydrateResultPage();
+  };
+
+  settingLanguage.addEventListener('change', applyAndSave);
+  settingUnits.addEventListener('change', applyAndSave);
+  settingLocalFocus.addEventListener('change', applyAndSave);
+
+  if (settingsToggleBtn && settingsPopover && settingsShell && settingsToggleBtn.dataset.wired !== '1') {
+    settingsToggleBtn.dataset.wired = '1';
+
+    settingsToggleBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const opening = settingsPopover.classList.contains('hidden');
+      settingsPopover.classList.toggle('hidden', !opening);
+      settingsToggleBtn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', (event) => {
+      if (settingsPopover.classList.contains('hidden')) return;
+      if (!settingsShell.contains(event.target)) {
+        settingsPopover.classList.add('hidden');
+        settingsToggleBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !settingsPopover.classList.contains('hidden')) {
+        settingsPopover.classList.add('hidden');
+        settingsToggleBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+}
+
+async function runNearMe() {
+  if (!nearMeBtn || !navigator.geolocation || runInFlight) return;
+
+  runInFlight = true;
+  nearMeBtn.disabled = true;
+  if (btn) btn.disabled = true;
+  setState('loading');
+
+  navigator.geolocation.getCurrentPosition(async (position) => {
+    try {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const geo = await reverseGeocode(lat, lon);
+      const weather = await getWeather(lat, lon);
+      const payload = {
+        geo,
+        weather,
+        selectedSeason: seasonSelect ? seasonSelect.value : 'auto',
+        selectedDate: hikeDateInput ? hikeDateInput.value : '',
+        createdAt: Date.now()
+      };
+      sessionStorage.setItem('hikeRightResult', JSON.stringify(payload));
+      window.location.href = 'result.html';
+    } catch (err) {
+      console.error(err);
+      showError('Could not fetch weather for your current location.');
+    } finally {
+      runInFlight = false;
+      nearMeBtn.disabled = false;
+      if (btn) btn.disabled = false;
+    }
+  }, () => {
+    showError('Location permission was denied. You can still type a location manually.');
+    runInFlight = false;
+    nearMeBtn.disabled = false;
+    if (btn) btn.disabled = false;
+  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+}
+
+async function reverseGeocode(lat, lon) {
+  try {
+    const lang = getLanguageCode();
+    const url = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=${lang}&format=json`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Reverse geocode failed');
+    const data = await res.json();
+    const row = data && Array.isArray(data.results) ? data.results[0] : null;
+    if (!row) {
+      return { lat, lon, name: 'My Location', sub: `${lat.toFixed(3)}, ${lon.toFixed(3)}` };
+    }
+    const bits = [row.country, row.admin1].filter(Boolean);
+    return {
+      lat,
+      lon,
+      name: row.name || 'My Location',
+      sub: bits.join(', ') || `${lat.toFixed(3)}, ${lon.toFixed(3)}`
+    };
+  } catch {
+    return { lat, lon, name: 'My Location', sub: `${lat.toFixed(3)}, ${lon.toFixed(3)}` };
+  }
+}
+
 function setupMoreToggle() {
   if (!moreBtn || !morePanel || moreBtn.dataset.wired === '1') return;
   moreBtn.dataset.wired = '1';
@@ -195,7 +342,12 @@ function setupPlaceOrganizer() {
       if (visible) shown += 1;
     });
 
-    placeCountEl.textContent = `Showing ${shown} place${shown === 1 ? '' : 's'}`;
+    const localTag = selectedCountry === 'USA'
+      ? ' in the U.S.'
+      : selectedContinent === 'North America'
+        ? ' in North America'
+        : '';
+    placeCountEl.textContent = `Showing ${shown} place${shown === 1 ? '' : 's'}${localTag}`;
   };
 
   continentSelect.addEventListener('change', () => {
@@ -206,6 +358,16 @@ function setupPlaceOrganizer() {
   countrySelect.addEventListener('change', applyPlaceFilter);
 
   updateCountryOptions();
+
+  // Default to local-first browsing for US users when enabled in settings.
+  if (userSettings.localFocus === 'us' && Array.from(continentSelect.options).some(option => option.value === 'North America')) {
+    continentSelect.value = 'North America';
+    updateCountryOptions();
+  }
+  if (userSettings.localFocus === 'us' && Array.from(countrySelect.options).some(option => option.value === 'USA')) {
+    countrySelect.value = 'USA';
+  }
+
   applyPlaceFilter();
 }
 
@@ -407,7 +569,7 @@ async function geocodeWithNominatim(query) {
 
 async function geocodeWithOpenMeteo(query) {
   try {
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=${getLanguageCode()}&format=json`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
     let res;
@@ -521,11 +683,11 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
   }
 
   if (dailyMaxWind >= 80 || windKph >= 80) {
-    score += 4; warnings.push(`Very strong winds (${Math.round(windKph)} km/h). Exposed areas may be hazardous and debris risk may increase.`);
+    score += 4; warnings.push(`Very strong winds (${Math.round(kphToMph(windKph))} mph). Exposed areas may be hazardous and debris risk may increase.`);
   } else if (dailyMaxWind >= 50 || windKph >= 50) {
-    score += 2; warnings.push(`Strong winds (${Math.round(windKph)} km/h) can make footing less stable on exposed ridges.`);
+    score += 2; warnings.push(`Strong winds (${Math.round(kphToMph(windKph))} mph) can make footing less stable on exposed ridges.`);
   } else if (windKph >= 30) {
-    score += 1; warnings.push(`Moderate winds (${Math.round(windKph)} km/h). Use caution on open terrain.`);
+    score += 1; warnings.push(`Moderate winds (${Math.round(kphToMph(windKph))} mph). Use caution on open terrain.`);
   }
 
   if (code === 99) {
@@ -542,16 +704,18 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
 
   if (dailyPrecip >= 6 && code < 61) {
     score += 2;
-    warnings.push(`Forecast suggests notable rainfall later today (${dailyPrecip} mm).`);
+    warnings.push(`Forecast suggests notable rainfall later today (${mmToInches(dailyPrecip).toFixed(2)} in / ${dailyPrecip} mm).`);
   } else if (dailyPrecip >= 2 && code < 51) {
     score += 1;
-    warnings.push(`Rain is likely later today (${dailyPrecip} mm forecast).`);
+    warnings.push(`Rain is likely later today (${mmToInches(dailyPrecip).toFixed(2)} in / ${dailyPrecip} mm forecast).`);
   }
 
   if (elevation >= 4000) {
     score += 2;
     warnings.push(`Very high elevation (${Math.round(elevation)} m). Altitude-related symptoms may be more likely without acclimatization.`);
     tips.push('Ascend slowly and watch for symptoms of altitude stress such as headache, nausea, or dizziness.');
+    tips.push('At this elevation, pre-acclimatization days are strongly recommended before any hard effort.');
+    tips.push('Turn around immediately if severe headache, confusion, or vomiting appears.');
   } else if (elevation >= 2500) {
     score += 1;
     warnings.push(`High elevation (${Math.round(elevation)} m). Weather may change rapidly.`);
@@ -559,6 +723,7 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
   }
 
   if (tempC <= 5) { tips.push('Wear moisture-wicking base layers and an insulating mid-layer.'); tips.push('Pack hand warmers and keep your extremities covered.'); }
+  if (tempC <= -5) { tips.push('Limit exposed skin and use windproof outer layers to reduce frostbite risk.'); }
   if (tempC >= 28) { tips.push('Start your hike at dawn to avoid peak heat.'); tips.push('Carry at least 0.5L of water per hour of hiking.'); }
   if (code >= 95) tips.push('Check the forecast every hour on days with storm risk.');
   if (windKph >= 30) tips.push('Secure loose clothing and gear. Avoid exposed ridgelines if possible.');
@@ -605,10 +770,10 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
   let verdict, message;
   if (score >= 7) {
     verdict = 'dangerous';
-    message = `Based on forecast data alone, conditions appear hazardous right now. ${weatherLabel(code)} weather, ${fmt(tempC)}, and ${Math.round(windKph)} km/h winds suggest postponing until you verify local trail status and official advisories.`;
+    message = `Based on forecast data alone, conditions appear hazardous right now. ${weatherLabel(code)} weather, ${fmt(tempC)}, and ${Math.round(kphToMph(windKph))} mph winds suggest postponing until you verify local trail status and official advisories.`;
   } else if (score >= 4) {
     verdict = 'bad';
-    message = `Forecast conditions suggest a poor hiking window. ${weatherLabel(code)} weather, ${fmt(tempC)} temperatures, and ${Math.round(windKph)} km/h winds may create significant hazards, so verify local conditions before going.`;
+    message = `Forecast conditions suggest a poor hiking window. ${weatherLabel(code)} weather, ${fmt(tempC)} temperatures, and ${Math.round(kphToMph(windKph))} mph winds may create significant hazards, so verify local conditions before going.`;
   } else if (score >= 2) {
     verdict = 'okay';
     message = `Forecast suggests a possible hiking window, but use caution. Conditions are ${weatherLabel(code).toLowerCase()} at ${fmt(tempC)}. Prepare for changing weather and check trail-specific updates before heading out.`;
@@ -655,7 +820,9 @@ function getSeasonFit(geo, weather, selectedSeason = 'auto') {
 
   let recommended = [];
 
-  if (desertLike) {
+  if (weather.elevation >= 5000) {
+    recommended = [];
+  } else if (desertLike) {
     recommended = ['Fall', 'Winter', 'Spring'];
   } else if (alpineLike) {
     recommended = hemisphereNorth ? ['Summer', 'Fall'] : ['Winter', 'Spring'];
@@ -675,7 +842,15 @@ function getSeasonFit(geo, weather, selectedSeason = 'auto') {
     : `${selectedSeason[0].toUpperCase()}${selectedSeason.slice(1)}`;
 
   const badChoice = selectedSeason !== 'auto' && !uniqueRecommended.includes(selectedLabel);
-  const recommendedLabel = uniqueRecommended.join(' / ');
+  const recommendedLabel = uniqueRecommended.length ? uniqueRecommended.join(' / ') : 'No recommended seasons';
+
+  if (!uniqueRecommended.length) {
+    return {
+      badChoice: true,
+      recommendedLabel,
+      seasonText: `${selectedLabel} (No recommended seasons)`
+    };
+  }
 
   if (selectedSeason === 'auto') {
     return {
@@ -757,14 +932,14 @@ function buildRecommendation(weather, selectedSeason = 'auto', selectedDate = ''
 
   const bestDate = weather.forecastDates[bestIdx];
   let day = bestDate
-    ? new Date(`${bestDate}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long' })
+    ? new Date(`${bestDate}T12:00:00`).toLocaleDateString(getLocale(), { weekday: 'long' })
     : 'Today';
 
   if (selectedDate) {
     const target = selectedDate.slice(0, 10);
     const inForecast = Array.isArray(weather.forecastDates) && weather.forecastDates.includes(target);
     if (inForecast) {
-      day = new Date(`${target}T12:00:00`).toLocaleDateString('en-US', {
+      day = new Date(`${target}T12:00:00`).toLocaleDateString(getLocale(), {
         weekday: 'long',
         month: 'short',
         day: 'numeric'
@@ -781,7 +956,7 @@ function formatSelectedDate(isoDate) {
   if (!isoDate) return 'Selected date';
   const d = new Date(`${isoDate}T12:00:00`);
   if (Number.isNaN(d.getTime())) return 'Selected date';
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return d.toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function timeToMinutes(hhmm) {
@@ -803,6 +978,11 @@ function minutesTo12h(totalMins) {
 // --- RENDER ---
 function renderResult(geo, weather, selectedSeason = 'auto', selectedDate = '') {
   const { verdict, message, warnings, tips, recommendation } = analyse(weather, selectedSeason, geo, selectedDate);
+  const isNotRecommended = verdict === 'bad' || verdict === 'dangerous' || recommendation.time === 'Not Recommended';
+
+  if (result) {
+    result.classList.toggle('not-recommended', isNotRecommended);
+  }
 
   document.getElementById('locationName').textContent = geo.name;
   document.getElementById('locationSub').textContent  = geo.sub;
@@ -838,28 +1018,36 @@ function renderResult(geo, weather, selectedSeason = 'auto', selectedDate = '') 
   if (recDay) recDay.textContent = recommendation.day;
   if (recSeason) recSeason.textContent = recommendation.season;
 
-  // Hero -- Fahrenheit primary, Celsius small below
-  const tF   = Math.round(weather.tempC * 9 / 5 + 32);
-  const tC   = Math.round(weather.tempC);
-  const flF  = Math.round((weather.feelsLike ?? weather.tempC) * 9 / 5 + 32);
-  const minF = Math.round(weather.dailyMinTemp * 9 / 5 + 32);
-  const maxF = Math.round(weather.dailyMaxTemp * 9 / 5 + 32);
+  const tF = Math.round(cToF(weather.tempC));
+  const tC = Math.round(weather.tempC);
+  const flF = Math.round(cToF(weather.feelsLike ?? weather.tempC));
+  const flC = Math.round(weather.feelsLike ?? weather.tempC);
+  const minF = Math.round(cToF(weather.dailyMinTemp));
+  const maxF = Math.round(cToF(weather.dailyMaxTemp));
+  const minC = Math.round(weather.dailyMinTemp);
+  const maxC = Math.round(weather.dailyMaxTemp);
 
-  document.getElementById('heroTemp').innerHTML    = `${tF}&deg;F<small class="hero-temp-c">${tC}&deg;C</small>`;
-  document.getElementById('heroFeels').textContent = `${flF}\u00B0F`;
-  document.getElementById('heroRange').textContent = `${minF}\u00B0F / ${maxF}\u00B0F`;
+  if (useMetricUnits()) {
+    document.getElementById('heroTemp').innerHTML = `${tC}&deg;C<small class="hero-temp-c">${tF}&deg;F</small>`;
+    document.getElementById('heroFeels').textContent = `${flC}\u00B0C`;
+    document.getElementById('heroRange').textContent = `${minC}\u00B0C / ${maxC}\u00B0C`;
+  } else {
+    document.getElementById('heroTemp').innerHTML = `${tF}&deg;F<small class="hero-temp-c">${tC}&deg;C</small>`;
+    document.getElementById('heroFeels').textContent = `${flF}\u00B0F`;
+    document.getElementById('heroRange').textContent = `${minF}\u00B0F / ${maxF}\u00B0F`;
+  }
   document.getElementById('heroIcon').textContent      = weatherIcon(weather.code, weather.isDay);
   document.getElementById('heroCondition').textContent = weatherLabel(weather.code);
 
   // Detail grid
   document.getElementById('dHumidity').textContent  = weather.humidity != null ? `${weather.humidity}%` : '--';
-  document.getElementById('dWind').textContent      = `${Math.round(weather.windKph)} km/h`;
-  document.getElementById('dPrecip').textContent    = `${weather.dailyPrecip ?? 0} mm`;
+  document.getElementById('dWind').textContent      = formatWind(weather.windKph);
+  document.getElementById('dPrecip').textContent    = formatPrecip(weather.dailyPrecip ?? 0);
   document.getElementById('dUV').textContent        = uvLabel(weather.uvIndex);
-  document.getElementById('dElevation').textContent = weather.elevation ? `${Math.round(weather.elevation)} m` : '--';
+  document.getElementById('dElevation').textContent = weather.elevation ? formatElevation(weather.elevation) : '--';
   document.getElementById('dSunrise').textContent   = weather.sunrise;
   document.getElementById('dSunset').textContent    = weather.sunset;
-  document.getElementById('dMaxWind').textContent   = `${Math.round(weather.dailyMaxWind)} km/h`;
+  document.getElementById('dMaxWind').textContent   = formatWind(weather.dailyMaxWind);
 
   const warnSection = document.getElementById('warningsList');
   const warnUl      = document.getElementById('warningsUl');
@@ -873,7 +1061,7 @@ function renderResult(geo, weather, selectedSeason = 'auto', selectedDate = '') 
 
   const tipsUl = document.getElementById('tipsUl');
   tipsUl.innerHTML = '';
-  tips.slice(0, 5).forEach(t => { const li = document.createElement('li'); li.textContent = t; tipsUl.appendChild(li); });
+  Array.from(new Set(tips)).forEach(t => { const li = document.createElement('li'); li.textContent = t; tipsUl.appendChild(li); });
 
   renderChart(weather);
   renderMoreInsights(geo, weather, verdict, selectedDate);
@@ -906,8 +1094,19 @@ function setupPlannerLaunch(geo, selectedDate = '', selectedSeason = 'auto') {
 }
 
 function renderMoreInsights(geo, weather, verdict, selectedDate = '') {
-  renderMiniChart('precipChart', weather.forecastDates, weather.forecastPrecip, '#1976d2', 'mm');
-  renderMiniChart('windChart', weather.forecastDates, weather.forecastMaxWindKph, '#ef6c00', 'km/h');
+  const precipTitle = document.getElementById('precipChartTitle');
+  const windTitle = document.getElementById('windChartTitle');
+  if (precipTitle) precipTitle.textContent = `7-Day Rain (${useMetricUnits() ? 'mm' : 'in'})`;
+  if (windTitle) windTitle.textContent = `7-Day Wind (${useMetricUnits() ? 'km/h' : 'mph'})`;
+
+  const precipSeries = useMetricUnits()
+    ? (weather.forecastPrecip || [])
+    : (weather.forecastPrecip || []).map(v => mmToInches(v));
+  const windSeries = useMetricUnits()
+    ? (weather.forecastMaxWindKph || [])
+    : (weather.forecastMaxWindKph || []).map(v => kphToMph(v));
+  renderMiniChart('precipChart', weather.forecastDates, precipSeries, '#1976d2', useMetricUnits() ? 'mm' : 'in');
+  renderMiniChart('windChart', weather.forecastDates, windSeries, '#ef6c00', useMetricUnits() ? 'km/h' : 'mph');
 
   const reviewsUl = document.getElementById('placeReviewsUl');
   if (reviewsUl) {
@@ -967,7 +1166,7 @@ function renderMiniChart(targetId, labels, values, color, unit) {
     const x = PAD.left + (i + 0.5) * (cW / cleanValues.length) - barW / 2;
     const h = Math.max(2, (v / max) * cH);
     const y = H - PAD.bottom - h;
-    const day = new Date(`${labels[i]}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short' });
+    const day = new Date(`${labels[i]}T12:00:00`).toLocaleDateString(getLocale(), { weekday: 'short' });
     svg += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${color}" opacity="0.86"/>`;
     svg += `<text x="${(x + barW / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#1a2e1a">${day}</text>`;
   });
@@ -978,7 +1177,103 @@ function renderMiniChart(targetId, labels, values, color, unit) {
 }
 
 // --- UTILS ---
-function fmt(c) { return `${Math.round(c * 9 / 5 + 32)}\u00B0F`; }
+function fmt(c) {
+  return useMetricUnits()
+    ? `${Math.round(c)}\u00B0C`
+    : `${Math.round(cToF(c))}\u00B0F`;
+}
+
+function cToF(c) {
+  return (Number(c) * 9 / 5) + 32;
+}
+
+function kphToMph(kph) {
+  const n = Number(kph);
+  if (!Number.isFinite(n)) return 0;
+  return n * 0.621371;
+}
+
+function mmToInches(mm) {
+  const n = Number(mm);
+  if (!Number.isFinite(n)) return 0;
+  return n * 0.0393701;
+}
+
+function metersToFeet(m) {
+  const n = Number(m);
+  if (!Number.isFinite(n)) return 0;
+  return n * 3.28084;
+}
+
+function formatWind(kph) {
+  const n = Number(kph);
+  if (!Number.isFinite(n)) return '--';
+  if (useMetricUnits()) return `${Math.round(n)} km/h`;
+  return `${Math.round(kphToMph(n))} mph (${Math.round(n)} km/h)`;
+}
+
+function formatPrecip(mm) {
+  const n = Number(mm);
+  if (!Number.isFinite(n)) return '--';
+  if (useMetricUnits()) return `${Math.round(n * 10) / 10} mm`;
+  return `${mmToInches(n).toFixed(2)} in (${Math.round(n * 10) / 10} mm)`;
+}
+
+function formatElevation(meters) {
+  const n = Number(meters);
+  if (!Number.isFinite(n)) return '--';
+  if (useMetricUnits()) return `${Math.round(n)} m`;
+  return `${Math.round(metersToFeet(n)).toLocaleString(getLocale())} ft (${Math.round(n)} m)`;
+}
+
+function useMetricUnits() {
+  return userSettings.units === 'metric';
+}
+
+function getLocale() {
+  return userSettings.language || 'en-US';
+}
+
+function getLanguageCode() {
+  return getLocale().split('-')[0];
+}
+
+function loadUserSettings() {
+  const defaults = {
+    language: 'en-US',
+    units: 'us',
+    localFocus: 'us'
+  };
+
+  try {
+    const preferred = (navigator.language || '').toLowerCase();
+    if (preferred.startsWith('es')) defaults.language = 'es-ES';
+    if (preferred.startsWith('fr')) defaults.language = 'fr-FR';
+  } catch {
+    // Keep defaults when navigator is unavailable.
+  }
+
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    return {
+      language: ['en-US', 'es-ES', 'fr-FR'].includes(parsed.language) ? parsed.language : defaults.language,
+      units: ['us', 'metric'].includes(parsed.units) ? parsed.units : defaults.units,
+      localFocus: ['us', 'global'].includes(parsed.localFocus) ? parsed.localFocus : defaults.localFocus
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveUserSettings(settings) {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Ignore storage failures (private mode, quota, etc).
+  }
+}
 
 function weatherIcon(code, isDay) {
   if (code === 0)  return isDay ? '\u2600\uFE0F' : '\uD83C\uDF19';
@@ -1006,7 +1301,7 @@ function uvLabel(uv) {
 function formatTime(isoStr) {
   if (!isoStr) return '--';
   const d = new Date(isoStr);
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return d.toLocaleTimeString(getLocale(), { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 function setState(state) {
@@ -1045,7 +1340,7 @@ function renderChart(weather) {
 
   const days = forecastDates.map(d => {
     const dt = new Date(`${d}T12:00:00`);
-    return dt.toLocaleDateString('en-US', { weekday: 'short' });
+    return dt.toLocaleDateString(getLocale(), { weekday: 'short' });
   });
 
   let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">`;
@@ -1053,9 +1348,9 @@ function renderChart(weather) {
   const stepC = tRange > 24 ? 10 : tRange > 12 ? 5 : 3;
   for (let c = Math.ceil(tMinC / stepC) * stepC; c <= tMaxC; c += stepC) {
     const y = toY(c).toFixed(1);
-    const f = Math.round(c * 9 / 5 + 32);
+    const axisLabel = useMetricUnits() ? `${Math.round(c)}\u00B0` : `${Math.round(cToF(c))}\u00B0`;
     svg += `<line x1="${PAD.left}" y1="${y}" x2="${W - PAD.right}" y2="${y}" stroke="#d4e0d4" stroke-width="1"/>`;
-    svg += `<text x="${PAD.left - 6}" y="${(parseFloat(y) + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b856b">${f}°</text>`;
+    svg += `<text x="${PAD.left - 6}" y="${(parseFloat(y) + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b856b">${axisLabel}</text>`;
   }
 
   const highPts = forecastMaxC.map((c, i) => `${toX(i).toFixed(1)},${toY(c).toFixed(1)}`).join(' ');

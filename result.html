@@ -8,6 +8,38 @@
 </head>
 <body data-page="result">
   <header>
+    <div class="settings-shell" id="settingsShell">
+      <button id="settingsToggleBtn" class="settings-toggle" type="button" aria-label="Open settings" aria-expanded="false">⚙</button>
+      <div id="settingsPopover" class="settings-popover hidden">
+        <p class="settings-title">Preferences</p>
+        <div class="settings-grid">
+          <label>
+            Language
+            <select id="settingLanguage">
+              <option value="en-US">English (US)</option>
+              <option value="es-ES">Espanol</option>
+              <option value="fr-FR">Francais</option>
+            </select>
+          </label>
+          <label>
+            Units
+            <select id="settingUnits">
+              <option value="us">US (F, mph, in)</option>
+              <option value="metric">Metric (C, km/h, mm)</option>
+            </select>
+          </label>
+          <label>
+            Trail Focus
+            <select id="settingLocalFocus">
+              <option value="us">Local-first (U.S.)</option>
+              <option value="global">Global</option>
+            </select>
+          </label>
+        </div>
+        <p id="settingsSavedNote" class="settings-saved-note hidden">Saved</p>
+      </div>
+    </div>
+
     <div class="logo">
       <span class="logo-icon">⛰️</span>
       <span class="logo-text">HikeRight</span>
@@ -96,11 +128,11 @@
         <div id="morePanel" class="more-panel hidden">
           <div class="more-grid">
             <div class="chart-section">
-              <h3 class="chart-title">7-Day Rain (mm)</h3>
+              <h3 id="precipChartTitle" class="chart-title">7-Day Rain (in)</h3>
               <div id="precipChart" class="forecast-chart"></div>
             </div>
             <div class="chart-section">
-              <h3 class="chart-title">7-Day Wind (km/h)</h3>
+              <h3 id="windChartTitle" class="chart-title">7-Day Wind (mph)</h3>
               <div id="windChart" class="forecast-chart"></div>
             </div>
           </div>
