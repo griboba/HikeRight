@@ -37,12 +37,18 @@ const OFFLINE_PACKS_KEY = 'hikeRightOfflinePacksV1';
 const CHECKIN_STATE_KEY = 'hikeRightCheckinStateV1';
 const COVERAGE_TRACK_KEY = 'hikeRightCoverageTrackV1';
 const ESSENTIALS_KEY = 'hikeRightTenEssentialsV1';
+const WEBHOOK_QUEUE_KEY = 'hikeRightWebhookQueueV1';
 const GEOCODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const WEATHER_TTL_MS = 20 * 60 * 1000;
 const userSettings = loadUserSettings();
 
 let activeCoverageWatchId = null;
 let checkinTimerHandle = null;
+let checkinVisibilityBound = false;
+let batteryListenersBound = false;
+
+// Drain queued webhook payloads whenever network comes back online.
+window.addEventListener('online', drainWebhookQueue);
 
 // ─── Dynamic Battery Profile ──────────────────────────────────────────────────
 // Uses Battery Status API (where supported) to automatically tier GPS accuracy.
@@ -1555,8 +1561,17 @@ function saveCheckinState(state) {
 }
 
 function ensureCheckinMonitor() {
-  if (checkinTimerHandle) return;
-  checkinTimerHandle = window.setInterval(tickCheckinMonitor, 30000);
+  if (!checkinTimerHandle) {
+    checkinTimerHandle = window.setInterval(tickCheckinMonitor, 30000);
+  }
+  // On iOS/mobile, setInterval is throttled when the tab is backgrounded.
+  // Re-check immediately whenever the user returns to the tab.
+  if (!checkinVisibilityBound) {
+    checkinVisibilityBound = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') tickCheckinMonitor();
+    });
+  }
 }
 
 async function tickCheckinMonitor() {
@@ -1603,9 +1618,45 @@ async function triggerEmergencyEscalation(state, overdueMins) {
         body: JSON.stringify(payload)
       });
     } catch {
-      // Best-effort webhook delivery only.
+      // Network failed — queue for retry when device comes back online.
+      queueWebhookPayload(userSettings.emergencyWebhook, payload);
     }
   }
+}
+
+function queueWebhookPayload(url, payload) {
+  try {
+    const queue = JSON.parse(localStorage.getItem(WEBHOOK_QUEUE_KEY) || '[]');
+    queue.push({ url, payload, queuedAt: Date.now() });
+    // Keep at most 20 queued items to avoid unbounded growth.
+    localStorage.setItem(WEBHOOK_QUEUE_KEY, JSON.stringify(queue.slice(-20)));
+  } catch { /* storage full or unavailable */ }
+}
+
+async function drainWebhookQueue() {
+  let queue;
+  try {
+    queue = JSON.parse(localStorage.getItem(WEBHOOK_QUEUE_KEY) || '[]');
+  } catch {
+    return;
+  }
+  if (!queue.length) return;
+
+  const remaining = [];
+  for (const item of queue) {
+    try {
+      await fetch(item.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item.payload)
+      });
+    } catch {
+      remaining.push(item);
+    }
+  }
+  try {
+    localStorage.setItem(WEBHOOK_QUEUE_KEY, JSON.stringify(remaining));
+  } catch { /* ignore */ }
 }
 
 function renderCheckinStatus() {
@@ -1784,8 +1835,11 @@ async function renderBatteryModeStatus() {
       else if (pct <= 40) label = `Auto: Saver (${pct}%${chg}) — GPS balanced`;
       else label = `Auto: Full accuracy (${pct}%${chg})`;
       el.textContent = label;
-      bat.addEventListener('levelchange', renderBatteryModeStatus);
-      bat.addEventListener('chargingchange', renderBatteryModeStatus);
+      if (!batteryListenersBound) {
+        batteryListenersBound = true;
+        bat.addEventListener('levelchange', renderBatteryModeStatus);
+        bat.addEventListener('chargingchange', renderBatteryModeStatus);
+      }
       return;
     } catch { /* fall through */ }
   }
