@@ -66,7 +66,6 @@ http://localhost:8000/
 
 - Forecast guidance is based on a 7-day weather window.
 - For dates outside the forecast range, safety will be shown as limited/unknown until forecast data is available.
-- Dead Man's Switch alert escalation is server-assisted when using an emergency webhook URL. For guaranteed out-of-range or phone-dead escalation, pair HikeRight with a dedicated backend/SMS service and satellite communicator.
 
 ## Safety Disclaimer
 
