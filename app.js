@@ -31,7 +31,7 @@ const placeCountEl = document.getElementById('placeCount');
 const isResultPage = document.body && document.body.dataset.page === 'result';
 const isFileOrigin = window.location.protocol === 'file:';
 const SETTINGS_KEY = 'hikeRightSettings';
-const GEOCODE_CACHE_KEY = 'hikeRightGeocodeCacheV1';
+const GEOCODE_CACHE_KEY = 'hikeRightGeocodeCacheV2';
 const WEATHER_CACHE_KEY = 'hikeRightWeatherCacheV1';
 const OFFLINE_PACKS_KEY = 'hikeRightOfflinePacksV1';
 const COVERAGE_TRACK_KEY = 'hikeRightCoverageTrackV1';
@@ -587,12 +587,72 @@ function currentSeasonName() {
 }
 
 // --- GEOCODING ---
-async function geocode(query) {
-  const primary = query.trim();
+function geocodeQueryVariants(query) {
+  const primary = (query || '').trim();
+  if (!primary) return [];
+
+  const lower = primary.toLowerCase();
+  const variants = [primary];
   const simple = primary.split(',')[0].trim();
-  const queries = simple && simple.toLowerCase() !== primary.toLowerCase()
-    ? [primary, simple]
-    : [primary];
+  if (simple && simple.toLowerCase() !== lower) variants.push(simple);
+
+  const replacements = [
+    { from: /apalatio+n|appalation|appalacian|apalachian/g, to: 'appalachian' },
+    { from: /trail/g, to: 'trail' },
+    { from: /pacifc|pacififc|pcific/g, to: 'pacific' },
+    { from: /crestt|creast/g, to: 'crest' }
+  ];
+
+  let corrected = lower;
+  replacements.forEach((rule) => {
+    corrected = corrected.replace(rule.from, rule.to);
+  });
+
+  if (corrected !== lower) {
+    variants.push(corrected);
+  }
+
+  if (corrected.includes('appalachian trail')) {
+    variants.push('appalachian trail, usa');
+    variants.push('appalachian trail georgia');
+  }
+  if (corrected.includes('pacific crest trail')) {
+    variants.push('pacific crest trail, usa');
+    variants.push('pacific crest trail california');
+  }
+
+  return Array.from(new Set(variants.map(v => v.trim()).filter(Boolean)));
+}
+
+function knownTrailFallback(query) {
+  const q = String(query || '').toLowerCase();
+
+  if (/appalach|appalac|appalation|apalatio+n/.test(q) && /trail/.test(q)) {
+    return {
+      lat: 34.6271,
+      lon: -84.1930,
+      name: 'Appalachian Trail',
+      sub: 'United States (GA to ME corridor)',
+      isRepresentative: true
+    };
+  }
+
+  if (/pacific/.test(q) && /crest/.test(q) && /trail/.test(q)) {
+    return {
+      lat: 32.5892,
+      lon: -116.4660,
+      name: 'Pacific Crest Trail',
+      sub: 'United States (CA to WA corridor)',
+      isRepresentative: true
+    };
+  }
+
+  return null;
+}
+
+async function geocode(query) {
+  const queries = geocodeQueryVariants(query);
+  if (!queries.length) return null;
 
   for (const q of queries) {
     const cached = getCacheEntry(GEOCODE_CACHE_KEY, q.toLowerCase(), GEOCODE_TTL_MS);
@@ -605,6 +665,15 @@ async function geocode(query) {
     if (hit) {
       setCacheEntry(GEOCODE_CACHE_KEY, q.toLowerCase(), hit);
       return hit;
+    }
+  }
+
+  // Deterministic fallback for common long-trail queries and misspellings.
+  for (const q of queries) {
+    const fallback = knownTrailFallback(q);
+    if (fallback) {
+      setCacheEntry(GEOCODE_CACHE_KEY, q.toLowerCase(), fallback);
+      return fallback;
     }
   }
 
@@ -1458,7 +1527,7 @@ function renderMoreInsights(geo, weather, verdict, selectedDate = '') {
   const credibilityUl = document.getElementById('credibilityChecksUl');
   if (credibilityUl) {
     credibilityUl.innerHTML = '';
-    buildCredibilityChecks(weather, selectedDate).forEach(item => {
+    buildCredibilityChecks(weather, selectedDate, geo).forEach(item => {
       const li = document.createElement('li');
       li.textContent = item;
       credibilityUl.appendChild(li);
@@ -1488,8 +1557,9 @@ function getStoredResultCreatedAt() {
   }
 }
 
-function buildCredibilityChecks(weather, selectedDate = '') {
+function buildCredibilityChecks(weather, selectedDate = '', geo = null) {
   const checks = [];
+  const knownTrailProfile = getKnownTrailProfile(geo);
   const createdAt = getStoredResultCreatedAt();
   if (createdAt) {
     const mins = Math.max(0, Math.round((Date.now() - createdAt) / 60000));
@@ -1501,6 +1571,9 @@ function buildCredibilityChecks(weather, selectedDate = '') {
   checks.push('Primary weather source: Open-Meteo forecast API (7-day model output).');
   checks.push('NOAA alerts appear only for U.S. coordinates; non-U.S. areas need local weather authority alerts.');
   checks.push('Safety verdict is a rules-based aid, not a certified incident-risk prediction.');
+  if (knownTrailProfile) {
+    checks.push(`Trail-length baseline uses a published long-trail reference (${knownTrailProfile.source}).`);
+  }
 
   if (!selectedDate) {
     checks.push('This view emphasizes current-day conditions; rerun near departure time for best reliability.');
@@ -1623,7 +1696,7 @@ function bindOfflinePack(geo, weather, verdict, recommendation) {
   const statusEl = document.getElementById('offlinePackStatus');
   if (!btnEl || !statusEl || !geo) return;
 
-  renderOfflinePackList();
+  renderOfflinePackList(geo);
 
   btnEl.onclick = async () => {
     btnEl.disabled = true;
@@ -1642,7 +1715,7 @@ function bindOfflinePack(geo, weather, verdict, recommendation) {
         tileCount
       });
       statusEl.textContent = `Offline pack saved (${tileCount} tiles prefetched).`;
-      renderOfflinePackList();
+      renderOfflinePackList(geo);
     } catch {
       statusEl.textContent = 'Offline pack failed. Try again with a stronger connection.';
     } finally {
@@ -1696,19 +1769,37 @@ function getOfflinePacks() {
   }
 }
 
-function renderOfflinePackList() {
+function renderOfflinePackList(currentGeo = null) {
   const list = document.getElementById('offlinePackList');
   if (!list) return;
   list.innerHTML = '';
   const packs = getOfflinePacks();
-  if (!packs.length) {
+  const normalize = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const currentKey = normalize(currentGeo?.name || '');
+
+  let visiblePacks = packs;
+  if (currentKey) {
+    visiblePacks = packs.filter((pack) => {
+      const packKey = normalize(pack?.name || '');
+      return packKey.includes(currentKey) || currentKey.includes(packKey);
+    });
+  }
+
+  if (!visiblePacks.length && currentKey) {
+    const li = document.createElement('li');
+    li.textContent = 'No offline packs saved for this location yet.';
+    list.appendChild(li);
+    return;
+  }
+
+  if (!visiblePacks.length) {
     const li = document.createElement('li');
     li.textContent = 'No offline packs saved yet.';
     list.appendChild(li);
     return;
   }
 
-  packs.forEach((pack) => {
+  visiblePacks.forEach((pack) => {
     const li = document.createElement('li');
     const when = new Date(pack.downloadedAt).toLocaleString(getLocale());
     li.textContent = `${pack.name} (${pack.sub || 'No subregion'}) - ${pack.tileCount || 0} tiles - saved ${when}`;
@@ -1804,6 +1895,27 @@ function suggestDefaultDistanceMiles(weather, verdict = 'okay') {
   return Math.max(2, Math.min(12, Math.round(miles * 2) / 2));
 }
 
+function getKnownTrailProfile(geo) {
+  const text = `${geo?.name || ''} ${geo?.sub || ''}`.toLowerCase();
+  const known = [
+    { test: /appalachian trail/, miles: 2197, source: 'Appalachian Trail Conservancy' },
+    { test: /pacific crest trail/, miles: 2650, source: 'Pacific Crest Trail Association' },
+    { test: /continental divide trail/, miles: 3100, source: 'Continental Divide Trail Coalition' },
+    { test: /arizona trail/, miles: 800, source: 'Arizona Trail Association' },
+    { test: /ice age trail/, miles: 1200, source: 'Ice Age Trail Alliance' },
+    { test: /john muir trail/, miles: 211, source: 'U.S. Forest Service / NPS route references' },
+    { test: /long trail/, miles: 273, source: 'Green Mountain Club' }
+  ];
+
+  const hit = known.find((item) => item.test.test(text));
+  return hit || null;
+}
+
+function getKnownTrailLengthMiles(geo) {
+  const profile = getKnownTrailProfile(geo);
+  return profile ? profile.miles : null;
+}
+
 function bindResourceCalculator(weather, geo, verdict = 'okay') {
   const tripInput = document.getElementById('tripHoursInput');
   const bufferInput = document.getElementById('bufferMinsInput');
@@ -1824,10 +1936,20 @@ function bindResourceCalculator(weather, geo, verdict = 'okay') {
   };
 
   let customModeActive = false;
+  let distanceManuallySet = false;
+  const knownTrailProfile = getKnownTrailProfile(geo);
+  const knownTrailLengthMiles = knownTrailProfile ? knownTrailProfile.miles : null;
 
   const currentDistance = Number(distanceInput.value);
-  if (!Number.isFinite(currentDistance) || currentDistance === 6) {
-    distanceInput.value = String(suggestDefaultDistanceMiles(weather, verdict));
+  const shouldAutoSet = !Number.isFinite(currentDistance) || currentDistance === 6 || currentDistance === 5;
+  if (shouldAutoSet) {
+    if (knownTrailLengthMiles) {
+      distanceInput.max = String(Math.max(80, Math.ceil(knownTrailLengthMiles)));
+      distanceInput.step = '1';
+      distanceInput.value = String(knownTrailLengthMiles);
+    } else {
+      distanceInput.value = String(suggestDefaultDistanceMiles(weather, verdict));
+    }
   }
 
   const setActivePaceButton = (mode) => {
@@ -1858,16 +1980,15 @@ function bindResourceCalculator(weather, geo, verdict = 'okay') {
   const recalc = () => {
     const tripHours = Math.max(1, Math.min(48, Number(tripInput.value) || 4));
     const bufferMins = Math.max(15, Math.min(300, Number(bufferInput.value) || 90));
-    const distanceMiles = Math.max(0.5, Math.min(80, Number(distanceInput.value) || 6));
+    const distanceMax = Math.max(0.5, Number(distanceInput.max) || 80);
+    const distanceMiles = Math.max(0.5, Math.min(distanceMax, Number(distanceInput.value) || 6));
     const paceMph = Math.max(0.5, Math.min(8, Number(paceInput.value) || 2));
     const sunsetMins = timeToMinutes(weather.sunset);
 
     const turnAroundEl = document.getElementById('turnAroundTime');
     const waterEl = document.getElementById('waterTarget');
-    const movingEl = document.getElementById('estimatedMovingTime');
     const totalEl = document.getElementById('estimatedTotalTime');
     const summaryDistanceEl = document.getElementById('summaryDistance');
-    const summaryMovingEl = document.getElementById('summaryMovingTime');
     const summaryTotalEl = document.getElementById('summaryTotalTime');
     const summaryDistanceNoteEl = document.getElementById('summaryDistanceNote');
 
@@ -1892,30 +2013,28 @@ function bindResourceCalculator(weather, geo, verdict = 'okay') {
     const movingHours = distanceMiles / paceMph;
     const breaksHours = distanceMiles >= 12 ? 1 : distanceMiles >= 8 ? 0.5 : 0.25;
     const totalHours = movingHours + breaksHours;
-    if (movingEl) movingEl.textContent = formatDurationHours(movingHours);
     if (totalEl) totalEl.textContent = formatDurationHours(totalHours);
     if (summaryDistanceEl) summaryDistanceEl.textContent = `${distanceMiles.toFixed(1)} mi`;
-    if (summaryMovingEl) summaryMovingEl.textContent = formatDurationHours(movingHours);
     if (summaryTotalEl) summaryTotalEl.textContent = formatDurationHours(totalHours);
     if (summaryDistanceNoteEl) {
-      summaryDistanceNoteEl.textContent = `Based on ${distanceMiles.toFixed(1)} miles at ${paceMph.toFixed(1)} mph plus short breaks.`;
+      if (knownTrailLengthMiles) {
+        if (!distanceManuallySet && Math.abs(distanceMiles - knownTrailLengthMiles) < 0.2) {
+          summaryDistanceNoteEl.textContent = `Using known full-trail length: about ${knownTrailLengthMiles.toLocaleString()} miles (${knownTrailProfile.source}). Change distance below if you only want one segment.`;
+        } else {
+          summaryDistanceNoteEl.textContent = `Custom segment set to ${distanceMiles.toFixed(1)} miles at ${paceMph.toFixed(1)} mph plus short breaks. Full trail is about ${knownTrailLengthMiles.toLocaleString()} miles.`;
+        }
+      } else {
+        summaryDistanceNoteEl.textContent = `Distance used for estimate: ${distanceMiles.toFixed(1)} miles at ${paceMph.toFixed(1)} mph plus short breaks.`;
+      }
     }
   };
 
-  // If we can estimate approach distance from current location, prefill a useful trail-distance default.
-  if (geo && navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const approachMiles = haversineMiles(pos.coords.latitude, pos.coords.longitude, geo.lat, geo.lon);
-      if (Number.isFinite(approachMiles) && approachMiles > 0.2 && Number(distanceInput.value) <= 6) {
-        distanceInput.value = String(Math.max(2, Math.min(20, Math.round(approachMiles * 2))));
-        recalc();
-      }
-    }, () => null, { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 });
-  }
-
   tripInput.oninput = recalc;
   bufferInput.oninput = recalc;
-  distanceInput.oninput = recalc;
+  distanceInput.oninput = () => {
+    distanceManuallySet = true;
+    recalc();
+  };
   paceInput.oninput = () => {
     syncPaceSelectFromInput();
     recalc();
@@ -1977,23 +2096,20 @@ function haversineMiles(lat1, lon1, lat2, lon2) {
 
 function setupRouteMapAndDirections(geo) {
   const mapFrame = document.getElementById('googleMapEmbed');
-  const dirBtn = document.getElementById('openGoogleDirectionsBtn');
+  const dirLink = document.getElementById('openGoogleDirectionsLink');
   const mapLink = document.getElementById('openGoogleMapLink');
   const status = document.getElementById('routeDistanceStatus');
-  if (!geo || !mapFrame || !dirBtn || !mapLink || !status) return;
+  if (!geo || !mapFrame || !dirLink || !mapLink || !status) return;
 
   const destination = `${geo.lat},${geo.lon}`;
   mapLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`;
-
-  dirBtn.onclick = () => {
-    const base = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=walking`;
-    window.open(base, '_blank', 'noopener');
-  };
+  dirLink.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=walking`;
 
   if (isFileOrigin) {
     // file:// pages run in strict unique-origin mode; keep navigation as external links only.
+    mapFrame.src = 'about:blank';
     mapFrame.classList.add('hidden');
-    status.textContent = 'Local file mode: map embed disabled by browser security. Use Open Walking Directions / Open Google Map.';
+    status.textContent = 'Local file mode: map embed disabled by browser security. Use Open Walking Directions / Open Google Map links.';
     return;
   }
 
@@ -2011,10 +2127,7 @@ function setupRouteMapAndDirections(geo) {
     status.textContent = `Approach distance (straight-line): ${miles.toFixed(1)} miles. Route directions loaded below.`;
     mapFrame.src = `https://www.google.com/maps?saddr=${encodeURIComponent(origin)}&daddr=${encodeURIComponent(destination)}&output=embed`;
     mapLink.href = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=walking`;
-    dirBtn.onclick = () => {
-      const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=walking`;
-      window.open(url, '_blank', 'noopener');
-    };
+    dirLink.href = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=walking`;
   }, () => {
     status.textContent = 'Approach distance: allow location permission to compute miles from your position.';
   }, {
@@ -2100,6 +2213,7 @@ function renderPrivacyState() {
 function buildCredibleNotes(geo, weather, verdict, selectedDate = '') {
   const notes = [];
   const place = `${geo?.name || 'This location'}${geo?.sub ? ` (${geo.sub})` : ''}`;
+  const knownTrailProfile = getKnownTrailProfile(geo);
   const createdAt = getStoredResultCreatedAt();
   const ageText = createdAt
     ? `${Math.max(0, Math.round((Date.now() - createdAt) / 60000))} minute(s) old`
@@ -2107,6 +2221,9 @@ function buildCredibleNotes(geo, weather, verdict, selectedDate = '') {
 
   notes.push(`Forecast data source: Open-Meteo for ${place}; current result is ${ageText}.`);
   notes.push('Location matching uses Open-Meteo geocoding and may occasionally resolve to a nearby place instead of the exact trailhead.');
+  if (knownTrailProfile) {
+    notes.push(`Known trail length reference: about ${knownTrailProfile.miles.toLocaleString()} miles (${knownTrailProfile.source}).`);
+  }
   if (selectedDate) {
     notes.push(`Planned hike date: ${formatSelectedDate(selectedDate)}.`);
   }
@@ -2267,8 +2384,8 @@ function weatherIcon(code, isDay) {
 }
 
 function verdictDisplayLabel(verdict) {
-  if (verdict === 'great') return 'Awesome';
-  if (verdict === 'okay') return 'Excellent';
+  if (verdict === 'great') return 'Excellent';
+  if (verdict === 'okay') return 'Use Caution';
   if (verdict === 'bad') return 'Try Again Other Day';
   return 'Hazardous';
 }

@@ -150,8 +150,7 @@
           </div>
         </div>
         <div class="recommend-grid">
-          <div><span class="r-label">Estimated Hike Length</span><span id="summaryDistance" class="r-value">6.0 mi</span></div>
-          <div><span class="r-label">Estimated Moving Time</span><span id="summaryMovingTime" class="r-value">3h 0m</span></div>
+          <div><span class="r-label">Estimated Trail Distance</span><span id="summaryDistance" class="r-value">6.0 mi</span></div>
           <div><span class="r-label">Estimated Total Time</span><span id="summaryTotalTime" class="r-value">3h 30m</span></div>
         </div>
         <p id="summaryDistanceNote" class="planner-sub">Estimate updates from your distance and pace settings below.</p>
@@ -245,7 +244,7 @@
               <input id="tripHoursInput" type="number" min="1" max="48" value="4" step="0.5" />
               <label for="bufferMinsInput">Safety buffer before sunset (minutes)</label>
               <input id="bufferMinsInput" type="number" min="15" max="300" value="90" step="15" />
-              <label for="distanceMilesInput">Planned trail distance (miles)</label>
+              <label for="distanceMilesInput">Trail distance used for estimate (miles)</label>
               <input id="distanceMilesInput" type="number" min="0.5" max="80" value="6" step="0.5" />
               <label for="paceMphInput">Average moving pace (mph)</label>
               <input id="paceMphInput" type="number" min="0.5" max="8" value="2" step="0.1" />
@@ -254,7 +253,6 @@
               <div class="recommend-grid">
                 <div><span class="r-label">Latest Turn Around</span><span id="turnAroundTime" class="r-value">—</span></div>
                 <div><span class="r-label">Water Target</span><span id="waterTarget" class="r-value">—</span></div>
-                <div><span class="r-label">Estimated Moving Time</span><span id="estimatedMovingTime" class="r-value">—</span></div>
                 <div><span class="r-label">Estimated Total Trip</span><span id="estimatedTotalTime" class="r-value">—</span></div>
                 <div><span class="r-label">Battery Saver Mode</span><span id="batteryModeStatus" class="r-value">—</span></div>
               </div>
@@ -266,10 +264,10 @@
             <p>Use Google Maps to navigate exactly to this trail area and estimate your approach distance from your current location.</p>
             <p id="routeDistanceStatus" class="lifeline-status">Approach distance: waiting for location permission...</p>
             <div class="lifeline-row">
-              <button id="openGoogleDirectionsBtn" class="save-cal-btn" type="button">Open Walking Directions</button>
+              <a id="openGoogleDirectionsLink" class="save-cal-btn route-link" target="_blank" rel="noopener noreferrer" href="#">Open Walking Directions</a>
               <a id="openGoogleMapLink" class="more-btn route-link" target="_blank" rel="noopener noreferrer" href="#">Open Google Map</a>
             </div>
-            <iframe id="googleMapEmbed" class="map-embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Trail map"></iframe>
+            <iframe id="googleMapEmbed" class="map-embed hidden" src="about:blank" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Trail map"></iframe>
           </article>
 
           <article class="lifeline-card">
