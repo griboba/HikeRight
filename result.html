@@ -168,24 +168,6 @@
           </article>
 
           <article class="lifeline-card">
-            <h4>Dead Man's Switch (Server-Assisted)</h4>
-            <p>If check-in is missed, HikeRight can trigger your emergency webhook and show local emergency alerts.</p>
-            <div class="lifeline-fields">
-              <label for="checkinMinsInput">Check-in interval (minutes)</label>
-              <input id="checkinMinsInput" type="number" min="5" max="720" value="45" />
-            </div>
-            <div class="lifeline-fields">
-              <label for="emergencyContactsInput">Emergency contacts (comma-separated)</label>
-              <input id="emergencyContactsInput" type="text" placeholder="Alex 555-555-1212, Sam 555-555-5656" />
-            </div>
-            <div class="lifeline-row">
-              <button id="armCheckinBtn" class="save-cal-btn" type="button">Arm Check-In</button>
-              <button id="checkinNowBtn" class="more-btn" type="button">Check In Now</button>
-            </div>
-            <p id="checkinStatus" class="lifeline-status">Inactive</p>
-          </article>
-
-          <article class="lifeline-card">
             <h4>Satellite Backup</h4>
             <p>When cellular fails, satellite messengers provide the last line of emergency communication. Launch your device companion app or open the web portal below.</p>
             <ul class="lifeline-list compact">
@@ -265,8 +247,8 @@
           <article class="lifeline-card">
             <h4>Privacy & Transparency</h4>
             <ul class="lifeline-list compact">
-              <li>Location points stay on your device unless you enable emergency webhook delivery.</li>
-              <li>Anonymous emergency mode strips location names from missed-checkin payloads.</li>
+              <li>Location points stay on your device.</li>
+              <li>No automatic emergency contact triggers are active in this build.</li>
               <li>Coverage breadcrumbs, essentials checklist, and offline packs are stored in local browser storage.</li>
             </ul>
             <p id="privacyStateText" class="lifeline-status">Privacy mode: standard</p>

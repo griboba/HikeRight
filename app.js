@@ -34,21 +34,14 @@ const SETTINGS_KEY = 'hikeRightSettings';
 const GEOCODE_CACHE_KEY = 'hikeRightGeocodeCacheV1';
 const WEATHER_CACHE_KEY = 'hikeRightWeatherCacheV1';
 const OFFLINE_PACKS_KEY = 'hikeRightOfflinePacksV1';
-const CHECKIN_STATE_KEY = 'hikeRightCheckinStateV1';
 const COVERAGE_TRACK_KEY = 'hikeRightCoverageTrackV1';
 const ESSENTIALS_KEY = 'hikeRightTenEssentialsV1';
-const WEBHOOK_QUEUE_KEY = 'hikeRightWebhookQueueV1';
 const GEOCODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const WEATHER_TTL_MS = 20 * 60 * 1000;
 const userSettings = loadUserSettings();
 
 let activeCoverageWatchId = null;
-let checkinTimerHandle = null;
-let checkinVisibilityBound = false;
 let batteryListenersBound = false;
-
-// Drain queued webhook payloads whenever network comes back online.
-window.addEventListener('online', drainWebhookQueue);
 
 // ─── Dynamic Battery Profile ──────────────────────────────────────────────────
 // Uses Battery Status API (where supported) to automatically tier GPS accuracy.
@@ -1326,7 +1319,6 @@ function renderSafetyLifeline(geo, weather, verdict, recommendation) {
   renderTerrainDifficulty(weather, verdict);
   renderNoaaAlerts(geo);
   bindOfflinePack(geo, weather, verdict, recommendation);
-  bindCheckinModule(geo);
   bindCoverageTracker();
   bindResourceCalculator(weather);
   renderEssentialsChecklist();
@@ -1501,174 +1493,6 @@ function renderOfflinePackList() {
     li.textContent = `${pack.name} (${pack.sub || 'No subregion'}) - ${pack.tileCount || 0} tiles - saved ${when}`;
     list.appendChild(li);
   });
-}
-
-function bindCheckinModule(geo) {
-  const armBtn = document.getElementById('armCheckinBtn');
-  const checkinBtn = document.getElementById('checkinNowBtn');
-  const minsInput = document.getElementById('checkinMinsInput');
-  const contactsInput = document.getElementById('emergencyContactsInput');
-  const status = document.getElementById('checkinStatus');
-  if (!armBtn || !checkinBtn || !minsInput || !contactsInput || !status) return;
-
-  const existing = getCheckinState();
-  if (existing) {
-    minsInput.value = String(existing.intervalMins || 45);
-    contactsInput.value = (existing.contacts || []).join(', ');
-  }
-
-  armBtn.onclick = () => {
-    const intervalMins = Math.min(720, Math.max(5, Number(minsInput.value) || 45));
-    const contacts = contactsInput.value.split(',').map((c) => c.trim()).filter(Boolean);
-    const state = {
-      armed: true,
-      intervalMins,
-      contacts,
-      lastCheckinAt: Date.now(),
-      nextDeadlineAt: Date.now() + intervalMins * 60 * 1000,
-      locationName: geo?.name || 'Unknown location'
-    };
-    saveCheckinState(state);
-    ensureCheckinMonitor();
-    renderCheckinStatus();
-  };
-
-  checkinBtn.onclick = () => {
-    const state = getCheckinState();
-    if (!state || !state.armed) return;
-    state.lastCheckinAt = Date.now();
-    state.nextDeadlineAt = Date.now() + state.intervalMins * 60 * 1000;
-    saveCheckinState(state);
-    renderCheckinStatus();
-  };
-
-  ensureCheckinMonitor();
-  renderCheckinStatus();
-}
-
-function getCheckinState() {
-  try {
-    const raw = localStorage.getItem(CHECKIN_STATE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function saveCheckinState(state) {
-  localStorage.setItem(CHECKIN_STATE_KEY, JSON.stringify(state));
-}
-
-function ensureCheckinMonitor() {
-  if (!checkinTimerHandle) {
-    checkinTimerHandle = window.setInterval(tickCheckinMonitor, 30000);
-  }
-  // On iOS/mobile, setInterval is throttled when the tab is backgrounded.
-  // Re-check immediately whenever the user returns to the tab.
-  if (!checkinVisibilityBound) {
-    checkinVisibilityBound = true;
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') tickCheckinMonitor();
-    });
-  }
-}
-
-async function tickCheckinMonitor() {
-  const state = getCheckinState();
-  if (!state || !state.armed) return;
-  if (Date.now() < state.nextDeadlineAt) {
-    renderCheckinStatus();
-    return;
-  }
-
-  const overdueMins = Math.max(1, Math.round((Date.now() - state.nextDeadlineAt) / 60000));
-  await triggerEmergencyEscalation(state, overdueMins);
-  state.nextDeadlineAt = Date.now() + state.intervalMins * 60 * 1000;
-  saveCheckinState(state);
-  renderCheckinStatus();
-}
-
-async function triggerEmergencyEscalation(state, overdueMins) {
-  const msg = `Emergency check-in missed by ${overdueMins} minutes at ${state.locationName}.`;
-
-  if ('Notification' in window) {
-    if (Notification.permission === 'granted') {
-      new Notification('HikeRight Check-In Missed', { body: msg });
-    } else if (Notification.permission === 'default') {
-      Notification.requestPermission().catch(() => null);
-    }
-  }
-
-  if (userSettings.emergencyWebhook) {
-    const payload = {
-      event: 'checkin_missed',
-      message: msg,
-      contacts: state.contacts || [],
-      overdueMins,
-      anonymousEmergency: userSettings.anonymousEmergency === 'on',
-      location: userSettings.anonymousEmergency === 'on' ? undefined : state.locationName,
-      timestamp: new Date().toISOString()
-    };
-
-    try {
-      await fetch(userSettings.emergencyWebhook, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    } catch {
-      // Network failed — queue for retry when device comes back online.
-      queueWebhookPayload(userSettings.emergencyWebhook, payload);
-    }
-  }
-}
-
-function queueWebhookPayload(url, payload) {
-  try {
-    const queue = JSON.parse(localStorage.getItem(WEBHOOK_QUEUE_KEY) || '[]');
-    queue.push({ url, payload, queuedAt: Date.now() });
-    // Keep at most 20 queued items to avoid unbounded growth.
-    localStorage.setItem(WEBHOOK_QUEUE_KEY, JSON.stringify(queue.slice(-20)));
-  } catch { /* storage full or unavailable */ }
-}
-
-async function drainWebhookQueue() {
-  let queue;
-  try {
-    queue = JSON.parse(localStorage.getItem(WEBHOOK_QUEUE_KEY) || '[]');
-  } catch {
-    return;
-  }
-  if (!queue.length) return;
-
-  const remaining = [];
-  for (const item of queue) {
-    try {
-      await fetch(item.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item.payload)
-      });
-    } catch {
-      remaining.push(item);
-    }
-  }
-  try {
-    localStorage.setItem(WEBHOOK_QUEUE_KEY, JSON.stringify(remaining));
-  } catch { /* ignore */ }
-}
-
-function renderCheckinStatus() {
-  const status = document.getElementById('checkinStatus');
-  if (!status) return;
-  const state = getCheckinState();
-  if (!state || !state.armed) {
-    status.textContent = 'Inactive';
-    return;
-  }
-  const minsLeft = Math.max(0, Math.round((state.nextDeadlineAt - Date.now()) / 60000));
-  status.textContent = `Armed. Next check-in due in ${minsLeft} minute${minsLeft === 1 ? '' : 's'}. Contacts: ${(state.contacts || []).join(', ') || 'none'}`;
 }
 
 function bindCoverageTracker() {
@@ -1849,9 +1673,8 @@ async function renderBatteryModeStatus() {
 function renderPrivacyState() {
   const el = document.getElementById('privacyStateText');
   if (!el) return;
-  const anon = userSettings.anonymousEmergency === 'on' ? 'anonymous emergency only' : 'standard emergency data';
-  const webhook = userSettings.emergencyWebhook ? 'webhook configured' : 'no webhook configured';
-  el.textContent = `Privacy mode: ${anon}; ${webhook}.`;
+  const mode = userSettings.anonymousEmergency === 'on' ? 'minimal data mode' : 'standard local data mode';
+  el.textContent = `Privacy mode: ${mode}. Data stays on this device.`;
 }
 
 function buildCredibleNotes(geo, weather, verdict, selectedDate = '') {
