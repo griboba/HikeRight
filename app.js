@@ -10,6 +10,9 @@ const seasonSelect = document.getElementById('seasonSelect');
 const settingLanguage = document.getElementById('settingLanguage');
 const settingUnits = document.getElementById('settingUnits');
 const settingLocalFocus = document.getElementById('settingLocalFocus');
+const settingBatterySaver = document.getElementById('settingBatterySaver');
+const settingAnonymousEmergency = document.getElementById('settingAnonymousEmergency');
+const settingEmergencyWebhook = document.getElementById('settingEmergencyWebhook');
 const settingsSavedNote = document.getElementById('settingsSavedNote');
 const settingsShell = document.getElementById('settingsShell');
 const settingsToggleBtn = document.getElementById('settingsToggleBtn');
@@ -21,6 +24,7 @@ const result  = document.getElementById('resultCard');
 const moreBtn = document.getElementById('moreBtn');
 const morePanel = document.getElementById('morePanel');
 const plannerOpenBtn = document.getElementById('plannerOpenBtn');
+const safetyCenterBtn = document.getElementById('safetyCenterBtn');
 const continentSelect = document.getElementById('placeContinent');
 const countrySelect = document.getElementById('placeCountry');
 const placeCountEl = document.getElementById('placeCount');
@@ -29,9 +33,29 @@ const isFileOrigin = window.location.protocol === 'file:';
 const SETTINGS_KEY = 'hikeRightSettings';
 const GEOCODE_CACHE_KEY = 'hikeRightGeocodeCacheV1';
 const WEATHER_CACHE_KEY = 'hikeRightWeatherCacheV1';
+const OFFLINE_PACKS_KEY = 'hikeRightOfflinePacksV1';
+const CHECKIN_STATE_KEY = 'hikeRightCheckinStateV1';
+const COVERAGE_TRACK_KEY = 'hikeRightCoverageTrackV1';
+const ESSENTIALS_KEY = 'hikeRightTenEssentialsV1';
 const GEOCODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const WEATHER_TTL_MS = 20 * 60 * 1000;
 const userSettings = loadUserSettings();
+
+let activeCoverageWatchId = null;
+let checkinTimerHandle = null;
+
+const TEN_ESSENTIALS = [
+  'Navigation (map, compass, GPS backup)',
+  'Headlamp with extra batteries',
+  'Sun protection (hat, sunglasses, sunscreen)',
+  'First aid kit and meds',
+  'Knife or multi-tool',
+  'Fire starter (lighter/matches)',
+  'Shelter layer (bivy/tarp/emergency blanket)',
+  'Extra food',
+  'Extra water and treatment',
+  'Extra clothes (insulation and rain shell)'
+];
 
 document.documentElement.lang = userSettings.language;
 
@@ -54,6 +78,8 @@ deferPlaceOrganizerSetup();
 setupMoreToggle();
 setupHikeDateInput();
 setupSettingsPanel();
+setupSafetyCenterButton();
+registerServiceWorker();
 
 if (seasonSelect) {
   seasonSelect.addEventListener('change', setupSeasonBadges);
@@ -159,11 +185,17 @@ function setupSettingsPanel() {
   settingLanguage.value = userSettings.language;
   settingUnits.value = userSettings.units;
   settingLocalFocus.value = userSettings.localFocus;
+  if (settingBatterySaver) settingBatterySaver.value = userSettings.batterySaver;
+  if (settingAnonymousEmergency) settingAnonymousEmergency.value = userSettings.anonymousEmergency;
+  if (settingEmergencyWebhook) settingEmergencyWebhook.value = userSettings.emergencyWebhook;
 
   const applyAndSave = () => {
     userSettings.language = settingLanguage.value;
     userSettings.units = settingUnits.value;
     userSettings.localFocus = settingLocalFocus.value;
+    if (settingBatterySaver) userSettings.batterySaver = settingBatterySaver.value;
+    if (settingAnonymousEmergency) userSettings.anonymousEmergency = settingAnonymousEmergency.value;
+    if (settingEmergencyWebhook) userSettings.emergencyWebhook = settingEmergencyWebhook.value.trim();
     saveUserSettings(userSettings);
     document.documentElement.lang = userSettings.language;
 
@@ -196,6 +228,9 @@ function setupSettingsPanel() {
   settingLanguage.addEventListener('change', applyAndSave);
   settingUnits.addEventListener('change', applyAndSave);
   settingLocalFocus.addEventListener('change', applyAndSave);
+  if (settingBatterySaver) settingBatterySaver.addEventListener('change', applyAndSave);
+  if (settingAnonymousEmergency) settingAnonymousEmergency.addEventListener('change', applyAndSave);
+  if (settingEmergencyWebhook) settingEmergencyWebhook.addEventListener('change', applyAndSave);
 
   if (settingsToggleBtn && settingsPopover && settingsShell && settingsToggleBtn.dataset.wired !== '1') {
     settingsToggleBtn.dataset.wired = '1';
@@ -260,7 +295,11 @@ async function runNearMe() {
     runInFlight = false;
     nearMeBtn.disabled = false;
     if (btn) btn.disabled = false;
-  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  }, {
+    enableHighAccuracy: userSettings.batterySaver !== 'on',
+    timeout: userSettings.batterySaver === 'on' ? 14000 : 10000,
+    maximumAge: userSettings.batterySaver === 'on' ? 300000 : 60000
+  });
 }
 
 async function reverseGeocode(lat, lon) {
@@ -1169,6 +1208,7 @@ function renderResult(geo, weather, selectedSeason = 'auto', selectedDate = '') 
   renderChart(weather);
   renderMoreInsights(geo, weather, verdict, selectedDate);
   setupPlannerLaunch(geo, selectedDate, selectedSeason);
+  renderSafetyLifeline(geo, weather, verdict, recommendation);
 
 }
 
@@ -1231,6 +1271,497 @@ function renderMoreInsights(geo, weather, verdict, selectedDate = '') {
       `<a href="https://www.tripadvisor.com/Search?q=${encoded}" target="_blank" rel="noopener noreferrer">Tripadvisor</a>`
     ].join('');
   }
+}
+
+function setupSafetyCenterButton() {
+  if (!safetyCenterBtn) return;
+  safetyCenterBtn.addEventListener('click', () => {
+    const section = document.getElementById('safetyLifeline');
+    if (!section) return;
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => null);
+  });
+}
+
+function renderSafetyLifeline(geo, weather, verdict, recommendation) {
+  const section = document.getElementById('safetyLifeline');
+  if (!section) return;
+
+  renderTerrainDifficulty(weather, verdict);
+  renderNoaaAlerts(geo);
+  bindOfflinePack(geo, weather, verdict, recommendation);
+  bindCheckinModule(geo);
+  bindCoverageTracker();
+  bindResourceCalculator(weather);
+  renderEssentialsChecklist();
+  renderCoverageHeatmap();
+  renderBatteryModeStatus();
+  renderPrivacyState();
+}
+
+function renderTerrainDifficulty(weather, verdict) {
+  const target = document.getElementById('terrainDifficulty');
+  if (!target) return;
+  const elevation = Number(weather.elevation) || 0;
+  const wind = Number(weather.dailyMaxWind || weather.windKph) || 0;
+  const precip = Number(weather.dailyPrecip || weather.precip) || 0;
+  const maxTemp = Number(weather.dailyMaxTemp || weather.tempC) || 0;
+  const minTemp = Number(weather.dailyMinTemp || weather.tempC) || 0;
+
+  let score = 1;
+  score += Math.min(3, Math.floor(elevation / 1300));
+  if (wind >= 35) score += 2;
+  else if (wind >= 22) score += 1;
+  if (precip >= 8) score += 2;
+  else if (precip >= 3) score += 1;
+  if (maxTemp >= 32 || minTemp <= 0) score += 1;
+  if (verdict === 'bad') score += 1;
+  if (verdict === 'dangerous') score += 2;
+  score = Math.max(1, Math.min(10, score));
+
+  const text = score <= 3 ? 'Easy to Moderate' : score <= 6 ? 'Moderate to Challenging' : 'High Consequence';
+  target.textContent = `Terrain difficulty: ${score}/10 (${text})`;
+}
+
+async function renderNoaaAlerts(geo) {
+  const panel = document.getElementById('weatherAlertsPanel');
+  const list = document.getElementById('weatherAlertsUl');
+  if (!panel || !list || !geo) return;
+
+  list.innerHTML = '';
+  const lat = Number(geo.lat);
+  const lon = Number(geo.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+  if (lat < 18 || lat > 72 || lon > -60 || lon < -170) {
+    panel.classList.remove('hidden');
+    const li = document.createElement('li');
+    li.textContent = 'NOAA alerts are focused on U.S. areas. Use local weather authority alerts for this region.';
+    list.appendChild(li);
+    return;
+  }
+
+  try {
+    const url = `https://api.weather.gov/alerts/active?point=${lat.toFixed(3)},${lon.toFixed(3)}`;
+    const res = await fetchWithTimeout(url, { headers: { Accept: 'application/geo+json' } }, 7000);
+    const data = await res.json();
+    const features = Array.isArray(data.features) ? data.features.slice(0, 4) : [];
+    panel.classList.remove('hidden');
+
+    if (!features.length) {
+      const li = document.createElement('li');
+      li.textContent = 'No active NOAA alerts at this point right now.';
+      list.appendChild(li);
+      return;
+    }
+
+    features.forEach((item) => {
+      const props = item.properties || {};
+      const li = document.createElement('li');
+      li.textContent = `${props.event || 'Weather Alert'}: ${props.headline || props.description || 'No details provided.'}`;
+      list.appendChild(li);
+    });
+  } catch {
+    panel.classList.remove('hidden');
+    const li = document.createElement('li');
+    li.textContent = 'Could not fetch NOAA alerts right now. Recheck before departure.';
+    list.appendChild(li);
+  }
+}
+
+function bindOfflinePack(geo, weather, verdict, recommendation) {
+  const btnEl = document.getElementById('downloadOfflinePackBtn');
+  const statusEl = document.getElementById('offlinePackStatus');
+  if (!btnEl || !statusEl || !geo) return;
+
+  renderOfflinePackList();
+
+  btnEl.onclick = async () => {
+    btnEl.disabled = true;
+    statusEl.textContent = 'Downloading offline pack...';
+    try {
+      const tileCount = await prefetchTopoTiles(geo.lat, geo.lon);
+      saveOfflinePack({
+        id: `${geo.name}-${Date.now()}`,
+        name: geo.name,
+        sub: geo.sub,
+        lat: geo.lat,
+        lon: geo.lon,
+        verdict,
+        recommendation,
+        downloadedAt: Date.now(),
+        tileCount
+      });
+      statusEl.textContent = `Offline pack saved (${tileCount} tiles prefetched).`;
+      renderOfflinePackList();
+    } catch {
+      statusEl.textContent = 'Offline pack failed. Try again with a stronger connection.';
+    } finally {
+      btnEl.disabled = false;
+    }
+  };
+}
+
+async function prefetchTopoTiles(lat, lon) {
+  if (!('caches' in window)) return 0;
+  const zoom = 12;
+  const center = latLonToTile(lat, lon, zoom);
+  const cache = await caches.open('hikeright-topo-v1');
+  const tasks = [];
+
+  for (let dx = -2; dx <= 2; dx += 1) {
+    for (let dy = -2; dy <= 2; dy += 1) {
+      const x = center.x + dx;
+      const y = center.y + dy;
+      const url = `https://tile.opentopomap.org/${zoom}/${x}/${y}.png`;
+      tasks.push(fetch(url, { mode: 'no-cors' }).then((res) => cache.put(url, res)).catch(() => null));
+    }
+  }
+
+  await Promise.all(tasks);
+  return tasks.length;
+}
+
+function latLonToTile(lat, lon, zoom) {
+  const latRad = lat * Math.PI / 180;
+  const n = 2 ** zoom;
+  const x = Math.floor((lon + 180) / 360 * n);
+  const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+  return { x, y };
+}
+
+function saveOfflinePack(pack) {
+  const packs = getOfflinePacks();
+  packs.unshift(pack);
+  localStorage.setItem(OFFLINE_PACKS_KEY, JSON.stringify(packs.slice(0, 12)));
+}
+
+function getOfflinePacks() {
+  try {
+    const raw = localStorage.getItem(OFFLINE_PACKS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function renderOfflinePackList() {
+  const list = document.getElementById('offlinePackList');
+  if (!list) return;
+  list.innerHTML = '';
+  const packs = getOfflinePacks();
+  if (!packs.length) {
+    const li = document.createElement('li');
+    li.textContent = 'No offline packs saved yet.';
+    list.appendChild(li);
+    return;
+  }
+
+  packs.forEach((pack) => {
+    const li = document.createElement('li');
+    const when = new Date(pack.downloadedAt).toLocaleString(getLocale());
+    li.textContent = `${pack.name} (${pack.sub || 'No subregion'}) - ${pack.tileCount || 0} tiles - saved ${when}`;
+    list.appendChild(li);
+  });
+}
+
+function bindCheckinModule(geo) {
+  const armBtn = document.getElementById('armCheckinBtn');
+  const checkinBtn = document.getElementById('checkinNowBtn');
+  const minsInput = document.getElementById('checkinMinsInput');
+  const contactsInput = document.getElementById('emergencyContactsInput');
+  const status = document.getElementById('checkinStatus');
+  if (!armBtn || !checkinBtn || !minsInput || !contactsInput || !status) return;
+
+  const existing = getCheckinState();
+  if (existing) {
+    minsInput.value = String(existing.intervalMins || 45);
+    contactsInput.value = (existing.contacts || []).join(', ');
+  }
+
+  armBtn.onclick = () => {
+    const intervalMins = Math.min(720, Math.max(5, Number(minsInput.value) || 45));
+    const contacts = contactsInput.value.split(',').map((c) => c.trim()).filter(Boolean);
+    const state = {
+      armed: true,
+      intervalMins,
+      contacts,
+      lastCheckinAt: Date.now(),
+      nextDeadlineAt: Date.now() + intervalMins * 60 * 1000,
+      locationName: geo?.name || 'Unknown location'
+    };
+    saveCheckinState(state);
+    ensureCheckinMonitor();
+    renderCheckinStatus();
+  };
+
+  checkinBtn.onclick = () => {
+    const state = getCheckinState();
+    if (!state || !state.armed) return;
+    state.lastCheckinAt = Date.now();
+    state.nextDeadlineAt = Date.now() + state.intervalMins * 60 * 1000;
+    saveCheckinState(state);
+    renderCheckinStatus();
+  };
+
+  ensureCheckinMonitor();
+  renderCheckinStatus();
+}
+
+function getCheckinState() {
+  try {
+    const raw = localStorage.getItem(CHECKIN_STATE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveCheckinState(state) {
+  localStorage.setItem(CHECKIN_STATE_KEY, JSON.stringify(state));
+}
+
+function ensureCheckinMonitor() {
+  if (checkinTimerHandle) return;
+  checkinTimerHandle = window.setInterval(tickCheckinMonitor, 30000);
+}
+
+async function tickCheckinMonitor() {
+  const state = getCheckinState();
+  if (!state || !state.armed) return;
+  if (Date.now() < state.nextDeadlineAt) {
+    renderCheckinStatus();
+    return;
+  }
+
+  const overdueMins = Math.max(1, Math.round((Date.now() - state.nextDeadlineAt) / 60000));
+  await triggerEmergencyEscalation(state, overdueMins);
+  state.nextDeadlineAt = Date.now() + state.intervalMins * 60 * 1000;
+  saveCheckinState(state);
+  renderCheckinStatus();
+}
+
+async function triggerEmergencyEscalation(state, overdueMins) {
+  const msg = `Emergency check-in missed by ${overdueMins} minutes at ${state.locationName}.`;
+
+  if ('Notification' in window) {
+    if (Notification.permission === 'granted') {
+      new Notification('HikeRight Check-In Missed', { body: msg });
+    } else if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => null);
+    }
+  }
+
+  if (userSettings.emergencyWebhook) {
+    const payload = {
+      event: 'checkin_missed',
+      message: msg,
+      contacts: state.contacts || [],
+      overdueMins,
+      anonymousEmergency: userSettings.anonymousEmergency === 'on',
+      location: userSettings.anonymousEmergency === 'on' ? undefined : state.locationName,
+      timestamp: new Date().toISOString()
+    };
+
+    try {
+      await fetch(userSettings.emergencyWebhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch {
+      // Best-effort webhook delivery only.
+    }
+  }
+}
+
+function renderCheckinStatus() {
+  const status = document.getElementById('checkinStatus');
+  if (!status) return;
+  const state = getCheckinState();
+  if (!state || !state.armed) {
+    status.textContent = 'Inactive';
+    return;
+  }
+  const minsLeft = Math.max(0, Math.round((state.nextDeadlineAt - Date.now()) / 60000));
+  status.textContent = `Armed. Next check-in due in ${minsLeft} minute${minsLeft === 1 ? '' : 's'}. Contacts: ${(state.contacts || []).join(', ') || 'none'}`;
+}
+
+function bindCoverageTracker() {
+  const startBtn = document.getElementById('startCoverageTrackBtn');
+  const stopBtn = document.getElementById('stopCoverageTrackBtn');
+  if (!startBtn || !stopBtn || !navigator.geolocation) return;
+
+  startBtn.onclick = () => {
+    if (activeCoverageWatchId != null) return;
+    activeCoverageWatchId = navigator.geolocation.watchPosition((pos) => {
+      const points = getCoverageTrack();
+      const connection = navigator.connection || {};
+      points.push({
+        lat: Number(pos.coords.latitude.toFixed(5)),
+        lon: Number(pos.coords.longitude.toFixed(5)),
+        accuracy: Math.round(pos.coords.accuracy || 0),
+        effectiveType: connection.effectiveType || 'unknown',
+        downlink: connection.downlink || 0,
+        ts: Date.now()
+      });
+      localStorage.setItem(COVERAGE_TRACK_KEY, JSON.stringify(points.slice(-80)));
+      renderCoverageHeatmap();
+    }, () => null, {
+      enableHighAccuracy: userSettings.batterySaver !== 'on',
+      maximumAge: userSettings.batterySaver === 'on' ? 180000 : 45000,
+      timeout: userSettings.batterySaver === 'on' ? 12000 : 7000
+    });
+  };
+
+  stopBtn.onclick = () => {
+    if (activeCoverageWatchId != null) {
+      navigator.geolocation.clearWatch(activeCoverageWatchId);
+      activeCoverageWatchId = null;
+    }
+  };
+}
+
+function getCoverageTrack() {
+  try {
+    const raw = localStorage.getItem(COVERAGE_TRACK_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function renderCoverageHeatmap() {
+  const list = document.getElementById('coverageHeatList');
+  if (!list) return;
+  list.innerHTML = '';
+  const points = getCoverageTrack();
+  if (!points.length) {
+    const li = document.createElement('li');
+    li.textContent = 'No coverage breadcrumbs yet. Start tracking on-trail.';
+    list.appendChild(li);
+    return;
+  }
+
+  points.slice(-8).reverse().forEach((point) => {
+    const li = document.createElement('li');
+    const quality = coverageQuality(point);
+    const bar = '[' + '#'.repeat(quality) + '-'.repeat(5 - quality) + ']';
+    li.textContent = `${bar} ${point.effectiveType} (${Number(point.downlink).toFixed(1)} Mbps) at ${new Date(point.ts).toLocaleTimeString(getLocale())}`;
+    list.appendChild(li);
+  });
+}
+
+function coverageQuality(point) {
+  if (point.downlink >= 8) return 5;
+  if (point.downlink >= 4) return 4;
+  if (point.downlink >= 2) return 3;
+  if (point.downlink >= 0.8) return 2;
+  return 1;
+}
+
+function bindResourceCalculator(weather) {
+  const tripInput = document.getElementById('tripHoursInput');
+  const bufferInput = document.getElementById('bufferMinsInput');
+  if (!tripInput || !bufferInput) return;
+
+  const recalc = () => {
+    const tripHours = Math.max(1, Math.min(48, Number(tripInput.value) || 4));
+    const bufferMins = Math.max(15, Math.min(300, Number(bufferInput.value) || 90));
+    const sunsetMins = timeToMinutes(weather.sunset);
+
+    const turnAroundEl = document.getElementById('turnAroundTime');
+    const waterEl = document.getElementById('waterTarget');
+
+    if (turnAroundEl) {
+      if (sunsetMins == null) {
+        turnAroundEl.textContent = 'Need sunset data';
+      } else {
+        const outboundMins = Math.round((tripHours / 2) * 60);
+        const latestTurn = sunsetMins - outboundMins - bufferMins;
+        turnAroundEl.textContent = minutesTo12h(latestTurn);
+      }
+    }
+
+    if (waterEl) {
+      const temp = Number(weather.dailyMaxTemp || weather.tempC) || 15;
+      const perHour = temp >= 30 ? 0.75 : temp <= 8 ? 0.4 : 0.55;
+      const liters = Math.max(1, Math.round(tripHours * perHour * 10) / 10);
+      const ounces = Math.round(liters * 33.814);
+      waterEl.textContent = `${liters} L (~${ounces} oz)`;
+    }
+  };
+
+  tripInput.oninput = recalc;
+  bufferInput.oninput = recalc;
+  recalc();
+}
+
+function renderEssentialsChecklist() {
+  const wrap = document.getElementById('essentialsChecklist');
+  const progress = document.getElementById('essentialsProgress');
+  if (!wrap || !progress) return;
+
+  let saved = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(ESSENTIALS_KEY) || '{}');
+  } catch {
+    saved = {};
+  }
+
+  wrap.innerHTML = '';
+
+  const update = () => {
+    const completed = Object.values(saved).filter(Boolean).length;
+    progress.textContent = `${completed}/10 complete`;
+    localStorage.setItem(ESSENTIALS_KEY, JSON.stringify(saved));
+  };
+
+  TEN_ESSENTIALS.forEach((item, idx) => {
+    const id = `ess-${idx}`;
+    const label = document.createElement('label');
+    label.className = 'essential-item';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.id = id;
+    box.checked = Boolean(saved[id]);
+    box.addEventListener('change', () => {
+      saved[id] = box.checked;
+      update();
+    });
+    const text = document.createElement('span');
+    text.textContent = item;
+    label.appendChild(box);
+    label.appendChild(text);
+    wrap.appendChild(label);
+  });
+
+  update();
+}
+
+function renderBatteryModeStatus() {
+  const el = document.getElementById('batteryModeStatus');
+  if (!el) return;
+  el.textContent = userSettings.batterySaver === 'on' ? 'Extreme Saver ON' : 'Standard';
+}
+
+function renderPrivacyState() {
+  const el = document.getElementById('privacyStateText');
+  if (!el) return;
+  const anon = userSettings.anonymousEmergency === 'on' ? 'anonymous emergency only' : 'standard emergency data';
+  const webhook = userSettings.emergencyWebhook ? 'webhook configured' : 'no webhook configured';
+  el.textContent = `Privacy mode: ${anon}; ${webhook}.`;
 }
 
 function buildCredibleNotes(geo, weather, verdict, selectedDate = '') {
@@ -1345,7 +1876,10 @@ function loadUserSettings() {
   const defaults = {
     language: 'en-US',
     units: 'us',
-    localFocus: 'us'
+    localFocus: 'us',
+    batterySaver: 'off',
+    anonymousEmergency: 'off',
+    emergencyWebhook: ''
   };
 
   try {
@@ -1363,7 +1897,10 @@ function loadUserSettings() {
     return {
       language: ['en-US', 'es-ES', 'fr-FR'].includes(parsed.language) ? parsed.language : defaults.language,
       units: ['us', 'metric'].includes(parsed.units) ? parsed.units : defaults.units,
-      localFocus: ['us', 'global'].includes(parsed.localFocus) ? parsed.localFocus : defaults.localFocus
+      localFocus: ['us', 'global'].includes(parsed.localFocus) ? parsed.localFocus : defaults.localFocus,
+      batterySaver: ['on', 'off'].includes(parsed.batterySaver) ? parsed.batterySaver : defaults.batterySaver,
+      anonymousEmergency: ['on', 'off'].includes(parsed.anonymousEmergency) ? parsed.anonymousEmergency : defaults.anonymousEmergency,
+      emergencyWebhook: typeof parsed.emergencyWebhook === 'string' ? parsed.emergencyWebhook : defaults.emergencyWebhook
     };
   } catch {
     return defaults;

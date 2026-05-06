@@ -212,9 +212,22 @@ main {
   text-transform: uppercase;
 }
 
+.settings-group {
+  margin-top: 0.5rem;
+}
+
+.settings-group-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.55px;
+  color: var(--muted);
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+}
+
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
   gap: 0.65rem;
 }
 
@@ -225,6 +238,17 @@ main {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 700;
+  min-width: 0;
+}
+
+.settings-wide {
+  grid-column: 1 / -1;
+}
+
+.settings-help {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .settings-grid select {
@@ -246,6 +270,24 @@ main {
   font-family: inherit;
   line-height: 1.2;
   cursor: pointer;
+}
+
+.settings-grid input {
+  border: 1.5px solid #c8d6c8;
+  background: #fff;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.42rem 0.68rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1.2;
+}
+
+.settings-grid input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.12);
 }
 
 .settings-grid select:focus {
@@ -794,6 +836,12 @@ main {
   }
 }
 
+@media (max-width: 760px) {
+  .settings-popover {
+    width: min(94vw, 400px);
+  }
+}
+
 .detail-item {
   background: var(--card2);
   border: 1px solid var(--border);
@@ -1202,4 +1250,130 @@ footer {
 .reviews-section li::before {
   content: "• ";
   color: var(--accent);
+}
+
+.safety-lifeline {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.lifeline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.lifeline-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lifeline-card h4 {
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.lifeline-card p {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.lifeline-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.lifeline-status {
+  font-size: 0.8rem;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.lifeline-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.lifeline-list li {
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.lifeline-list li::before {
+  content: "• ";
+  color: var(--accent);
+}
+
+.lifeline-list.compact li {
+  line-height: 1.35;
+}
+
+.lifeline-fields {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.lifeline-fields.two-col {
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.lifeline-fields label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.lifeline-fields input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.88rem;
+  font-family: inherit;
+}
+
+.lifeline-fields input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.12);
+}
+
+.essentials-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+}
+
+.essential-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem;
+  align-items: start;
+  font-size: 0.84rem;
+  color: var(--text);
+}
+
+.essential-item input {
+  margin-top: 0.15rem;
+}
+
+@media (max-width: 760px) {
+  .lifeline-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lifeline-fields.two-col {
+    grid-template-columns: 1fr;
+  }
 }

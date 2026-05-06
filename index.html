@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>HikeRight – Weather-Based Hike Planner</title>
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -12,29 +13,56 @@
       <button id="settingsToggleBtn" class="settings-toggle" type="button" aria-label="Open settings" aria-expanded="false">⚙</button>
       <div id="settingsPopover" class="settings-popover hidden">
         <p class="settings-title">Preferences</p>
-        <div class="settings-grid">
-          <label>
-            Language
-            <select id="settingLanguage">
-              <option value="en-US">English (US)</option>
-              <option value="es-ES">Espanol</option>
-              <option value="fr-FR">Francais</option>
-            </select>
-          </label>
-          <label>
-            Units
-            <select id="settingUnits">
-              <option value="us">US (F, mph, in)</option>
-              <option value="metric">Metric (C, km/h, mm)</option>
-            </select>
-          </label>
-          <label>
-            Trail Focus
-            <select id="settingLocalFocus">
-              <option value="us">Local-first (U.S.)</option>
-              <option value="global">Global</option>
-            </select>
-          </label>
+        <div class="settings-group">
+          <p class="settings-group-title">Display</p>
+          <div class="settings-grid">
+            <label>
+              Language
+              <select id="settingLanguage">
+                <option value="en-US">English (US)</option>
+                <option value="es-ES">Espanol</option>
+                <option value="fr-FR">Francais</option>
+              </select>
+            </label>
+            <label>
+              Units
+              <select id="settingUnits">
+                <option value="us">US (F, mph, in)</option>
+                <option value="metric">Metric (C, km/h, mm)</option>
+              </select>
+            </label>
+            <label>
+              Trail Focus
+              <select id="settingLocalFocus">
+                <option value="us">Local-first (U.S.)</option>
+                <option value="global">Global</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="settings-group">
+          <p class="settings-group-title">Safety</p>
+          <div class="settings-grid">
+            <label>
+              Battery Mode
+              <select id="settingBatterySaver">
+                <option value="off">Standard</option>
+                <option value="on">Extreme Saver</option>
+              </select>
+            </label>
+            <label>
+              Emergency Data
+              <select id="settingAnonymousEmergency">
+                <option value="off">Off</option>
+                <option value="on">Anonymous Emergency Only</option>
+              </select>
+            </label>
+            <label class="settings-wide">
+              Emergency Webhook URL
+              <input id="settingEmergencyWebhook" type="url" placeholder="https://example.com/sos" />
+              <span class="settings-help">Used by missed check-in emergency escalation.</span>
+            </label>
+          </div>
         </div>
         <p id="settingsSavedNote" class="settings-saved-note hidden">Saved</p>
       </div>

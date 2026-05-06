@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>HikeRight - Results</title>
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body data-page="result">
@@ -12,29 +13,56 @@
       <button id="settingsToggleBtn" class="settings-toggle" type="button" aria-label="Open settings" aria-expanded="false">⚙</button>
       <div id="settingsPopover" class="settings-popover hidden">
         <p class="settings-title">Preferences</p>
-        <div class="settings-grid">
-          <label>
-            Language
-            <select id="settingLanguage">
-              <option value="en-US">English (US)</option>
-              <option value="es-ES">Espanol</option>
-              <option value="fr-FR">Francais</option>
-            </select>
-          </label>
-          <label>
-            Units
-            <select id="settingUnits">
-              <option value="us">US (F, mph, in)</option>
-              <option value="metric">Metric (C, km/h, mm)</option>
-            </select>
-          </label>
-          <label>
-            Trail Focus
-            <select id="settingLocalFocus">
-              <option value="us">Local-first (U.S.)</option>
-              <option value="global">Global</option>
-            </select>
-          </label>
+        <div class="settings-group">
+          <p class="settings-group-title">Display</p>
+          <div class="settings-grid">
+            <label>
+              Language
+              <select id="settingLanguage">
+                <option value="en-US">English (US)</option>
+                <option value="es-ES">Espanol</option>
+                <option value="fr-FR">Francais</option>
+              </select>
+            </label>
+            <label>
+              Units
+              <select id="settingUnits">
+                <option value="us">US (F, mph, in)</option>
+                <option value="metric">Metric (C, km/h, mm)</option>
+              </select>
+            </label>
+            <label>
+              Trail Focus
+              <select id="settingLocalFocus">
+                <option value="us">Local-first (U.S.)</option>
+                <option value="global">Global</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="settings-group">
+          <p class="settings-group-title">Safety</p>
+          <div class="settings-grid">
+            <label>
+              Battery Mode
+              <select id="settingBatterySaver">
+                <option value="off">Standard</option>
+                <option value="on">Extreme Saver</option>
+              </select>
+            </label>
+            <label>
+              Emergency Data
+              <select id="settingAnonymousEmergency">
+                <option value="off">Off</option>
+                <option value="on">Anonymous Emergency Only</option>
+              </select>
+            </label>
+            <label class="settings-wide">
+              Emergency Webhook URL
+              <input id="settingEmergencyWebhook" type="url" placeholder="https://example.com/sos" />
+              <span class="settings-help">Used by missed check-in emergency escalation.</span>
+            </label>
+          </div>
         </div>
         <p id="settingsSavedNote" class="settings-saved-note hidden">Saved</p>
       </div>
@@ -50,6 +78,7 @@
   <main class="results-main">
     <a class="back-link" href="index.html">← Back To Search</a>
     <button id="plannerOpenBtn" class="planner-link" type="button">Open Hike Date Planner Tab</button>
+    <button id="safetyCenterBtn" class="planner-link" type="button">Open Safety Center</button>
 
     <div id="loadingState" class="loading hidden">
       <div class="spinner"></div>
@@ -122,6 +151,99 @@
         <h3>💡 Tips for this hike</h3>
         <ul id="tipsUl"></ul>
       </div>
+
+      <section id="safetyLifeline" class="safety-lifeline">
+        <h3 class="chart-title">Safety Lifeline</h3>
+        <p class="planner-sub">Critical safety tools designed for low-signal trips, emergency preparation, and daylight planning.</p>
+
+        <div class="lifeline-grid">
+          <article class="lifeline-card">
+            <h4>Offline-First Pack</h4>
+            <p>Save this trail briefing and prefetch nearby topographic tiles so key information is available offline.</p>
+            <div class="lifeline-row">
+              <button id="downloadOfflinePackBtn" class="save-cal-btn" type="button">Download Offline Pack</button>
+              <span id="offlinePackStatus" class="lifeline-status">Not downloaded yet</span>
+            </div>
+            <ul id="offlinePackList" class="lifeline-list"></ul>
+          </article>
+
+          <article class="lifeline-card">
+            <h4>Dead Man's Switch (Server-Assisted)</h4>
+            <p>If check-in is missed, HikeRight can trigger your emergency webhook and show local emergency alerts.</p>
+            <div class="lifeline-fields">
+              <label for="checkinMinsInput">Check-in interval (minutes)</label>
+              <input id="checkinMinsInput" type="number" min="5" max="720" value="45" />
+            </div>
+            <div class="lifeline-fields">
+              <label for="emergencyContactsInput">Emergency contacts (comma-separated)</label>
+              <input id="emergencyContactsInput" type="text" placeholder="Alex 555-555-1212, Sam 555-555-5656" />
+            </div>
+            <div class="lifeline-row">
+              <button id="armCheckinBtn" class="save-cal-btn" type="button">Arm Check-In</button>
+              <button id="checkinNowBtn" class="more-btn" type="button">Check In Now</button>
+            </div>
+            <p id="checkinStatus" class="lifeline-status">Inactive</p>
+          </article>
+
+          <article class="lifeline-card">
+            <h4>Real-Time Safety Overlays</h4>
+            <p id="terrainDifficulty" class="lifeline-status">Terrain difficulty: calculating...</p>
+            <div id="weatherAlertsPanel" class="warnings-list hidden">
+              <h3>NOAA / Weather Alerts</h3>
+              <ul id="weatherAlertsUl"></ul>
+            </div>
+            <div class="lifeline-row">
+              <button id="startCoverageTrackBtn" class="save-cal-btn" type="button">Start Coverage Track</button>
+              <button id="stopCoverageTrackBtn" class="more-btn" type="button">Stop</button>
+            </div>
+            <ul id="coverageHeatList" class="lifeline-list"></ul>
+          </article>
+
+          <article class="lifeline-card">
+            <h4>Resource Management</h4>
+            <p>Compute a firm turnaround time and hydration target to avoid getting caught out after dark.</p>
+            <div class="lifeline-fields two-col">
+              <label for="tripHoursInput">Planned round-trip hours</label>
+              <input id="tripHoursInput" type="number" min="1" max="48" value="4" step="0.5" />
+              <label for="bufferMinsInput">Safety buffer before sunset (minutes)</label>
+              <input id="bufferMinsInput" type="number" min="15" max="300" value="90" step="15" />
+            </div>
+            <div class="recommend-box">
+              <div class="recommend-grid">
+                <div><span class="r-label">Latest Turn Around</span><span id="turnAroundTime" class="r-value">—</span></div>
+                <div><span class="r-label">Water Target</span><span id="waterTarget" class="r-value">—</span></div>
+                <div><span class="r-label">Battery Saver Mode</span><span id="batteryModeStatus" class="r-value">—</span></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="lifeline-card">
+            <h4>The 10 Essentials Checklist</h4>
+            <p id="essentialsProgress" class="lifeline-status">0/10 complete</p>
+            <div id="essentialsChecklist" class="essentials-grid"></div>
+          </article>
+
+          <article class="lifeline-card">
+            <h4>Offline Survival Guides</h4>
+            <ul class="lifeline-list compact">
+              <li><strong>First aid basics:</strong> stop bleeding with direct pressure, immobilize injuries, and monitor for shock.</li>
+              <li><strong>Signal for help:</strong> whistle 3 blasts, pause, repeat. Use mirror flashes in open sun.</li>
+              <li><strong>If lost:</strong> STOP: Stop, Think, Observe, Plan. Stay put if nightfall or severe weather is near.</li>
+              <li><strong>Kids method:</strong> "Stop and Blow" with a whistle every minute until found.</li>
+            </ul>
+          </article>
+
+          <article class="lifeline-card">
+            <h4>Privacy & Transparency</h4>
+            <ul class="lifeline-list compact">
+              <li>Location points stay on your device unless you enable emergency webhook delivery.</li>
+              <li>Anonymous emergency mode strips location names from missed-checkin payloads.</li>
+              <li>Coverage breadcrumbs, essentials checklist, and offline packs are stored in local browser storage.</li>
+            </ul>
+            <p id="privacyStateText" class="lifeline-status">Privacy mode: standard</p>
+          </article>
+        </div>
+      </section>
 
       <div class="more-wrap">
         <button id="moreBtn" class="more-btn" type="button" aria-expanded="false">More Information</button>

@@ -12,10 +12,35 @@ const plannerBetterDate = document.getElementById('plannerBetterDate');
 const plannerWarnings = document.getElementById('plannerWarnings');
 const plannerWarningsUl = document.getElementById('plannerWarningsUl');
 
+const settingLanguage = document.getElementById('settingLanguage');
+const settingUnits = document.getElementById('settingUnits');
+const settingLocalFocus = document.getElementById('settingLocalFocus');
+const settingBatterySaver = document.getElementById('settingBatterySaver');
+const settingAnonymousEmergency = document.getElementById('settingAnonymousEmergency');
+const settingEmergencyWebhook = document.getElementById('settingEmergencyWebhook');
+const settingsSavedNote = document.getElementById('settingsSavedNote');
+const settingsShell = document.getElementById('settingsShell');
+const settingsToggleBtn = document.getElementById('settingsToggleBtn');
+const settingsPopover = document.getElementById('settingsPopover');
+
+const SETTINGS_KEY = 'hikeRightSettings';
+const userSettings = loadPlannerSettings();
+
+document.documentElement.lang = userSettings.language;
+
 let weather = null;
 let selectedIsoDate = '';
 
+setupPlannerSettingsPanel();
 initPlanner();
+registerServiceWorker();
+
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => null);
+  });
+}
 
 async function initPlanner() {
   let payload = null;
@@ -308,7 +333,109 @@ function showPlannerError(message) {
 function formatDateLong(isoDate) {
   const d = new Date(`${isoDate}T12:00:00`);
   if (Number.isNaN(d.getTime())) return isoDate;
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(userSettings.language || 'en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function setupPlannerSettingsPanel() {
+  if (!settingLanguage || !settingUnits || !settingLocalFocus) return;
+
+  settingLanguage.value = userSettings.language;
+  settingUnits.value = userSettings.units;
+  settingLocalFocus.value = userSettings.localFocus;
+  if (settingBatterySaver) settingBatterySaver.value = userSettings.batterySaver;
+  if (settingAnonymousEmergency) settingAnonymousEmergency.value = userSettings.anonymousEmergency;
+  if (settingEmergencyWebhook) settingEmergencyWebhook.value = userSettings.emergencyWebhook;
+
+  const applyAndSave = () => {
+    userSettings.language = settingLanguage.value;
+    userSettings.units = settingUnits.value;
+    userSettings.localFocus = settingLocalFocus.value;
+    if (settingBatterySaver) userSettings.batterySaver = settingBatterySaver.value;
+    if (settingAnonymousEmergency) userSettings.anonymousEmergency = settingAnonymousEmergency.value;
+    if (settingEmergencyWebhook) userSettings.emergencyWebhook = settingEmergencyWebhook.value.trim();
+
+    savePlannerSettings(userSettings);
+    document.documentElement.lang = userSettings.language;
+
+    if (settingsSavedNote) {
+      settingsSavedNote.classList.remove('hidden');
+      window.setTimeout(() => settingsSavedNote.classList.add('hidden'), 1200);
+    }
+  };
+
+  settingLanguage.addEventListener('change', applyAndSave);
+  settingUnits.addEventListener('change', applyAndSave);
+  settingLocalFocus.addEventListener('change', applyAndSave);
+  if (settingBatterySaver) settingBatterySaver.addEventListener('change', applyAndSave);
+  if (settingAnonymousEmergency) settingAnonymousEmergency.addEventListener('change', applyAndSave);
+  if (settingEmergencyWebhook) settingEmergencyWebhook.addEventListener('change', applyAndSave);
+
+  if (settingsToggleBtn && settingsPopover && settingsShell) {
+    settingsToggleBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const opening = settingsPopover.classList.contains('hidden');
+      settingsPopover.classList.toggle('hidden', !opening);
+      settingsToggleBtn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', (event) => {
+      if (settingsPopover.classList.contains('hidden')) return;
+      if (!settingsShell.contains(event.target)) {
+        settingsPopover.classList.add('hidden');
+        settingsToggleBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !settingsPopover.classList.contains('hidden')) {
+        settingsPopover.classList.add('hidden');
+        settingsToggleBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+}
+
+function loadPlannerSettings() {
+  const defaults = {
+    language: 'en-US',
+    units: 'us',
+    localFocus: 'us',
+    batterySaver: 'off',
+    anonymousEmergency: 'off',
+    emergencyWebhook: ''
+  };
+
+  try {
+    const preferred = (navigator.language || '').toLowerCase();
+    if (preferred.startsWith('es')) defaults.language = 'es-ES';
+    if (preferred.startsWith('fr')) defaults.language = 'fr-FR';
+  } catch {
+    // Keep defaults when navigator is unavailable.
+  }
+
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    return {
+      language: ['en-US', 'es-ES', 'fr-FR'].includes(parsed.language) ? parsed.language : defaults.language,
+      units: ['us', 'metric'].includes(parsed.units) ? parsed.units : defaults.units,
+      localFocus: ['us', 'global'].includes(parsed.localFocus) ? parsed.localFocus : defaults.localFocus,
+      batterySaver: ['on', 'off'].includes(parsed.batterySaver) ? parsed.batterySaver : defaults.batterySaver,
+      anonymousEmergency: ['on', 'off'].includes(parsed.anonymousEmergency) ? parsed.anonymousEmergency : defaults.anonymousEmergency,
+      emergencyWebhook: typeof parsed.emergencyWebhook === 'string' ? parsed.emergencyWebhook : defaults.emergencyWebhook
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function savePlannerSettings(settings) {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Ignore storage failures (private mode, quota, etc).
+  }
 }
 
 function toIsoDate(d) {

@@ -1,0 +1,17 @@
+{
+  "name": "HikeRight Safety Lifeline",
+  "short_name": "HikeRight",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7f5",
+  "theme_color": "#2e7d32",
+  "description": "Offline-first hike safety planner with weather warnings, check-ins, and emergency prep tools.",
+  "icons": [
+    {
+      "src": "preview.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
