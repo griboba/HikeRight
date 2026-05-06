@@ -1174,6 +1174,7 @@ function minutesTo12h(totalMins) {
 // --- RENDER ---
 function renderResult(geo, weather, selectedSeason = 'auto', selectedDate = '') {
   const { verdict, message, warnings, tips, recommendation } = analyse(weather, selectedSeason, geo, selectedDate);
+  const knownCautions = buildKnownCautions(geo, weather, verdict, recommendation, selectedSeason, selectedDate);
   const isNotRecommended = verdict === 'bad' || verdict === 'dangerous' || recommendation.time === 'Not Recommended';
 
   if (result) {
@@ -1255,6 +1256,8 @@ function renderResult(geo, weather, selectedSeason = 'auto', selectedDate = '') 
     warnSection.classList.add('hidden');
   }
 
+  renderKnownCautions(knownCautions);
+
   const tipsUl = document.getElementById('tipsUl');
   tipsUl.innerHTML = '';
   Array.from(new Set(tips)).forEach(t => { const li = document.createElement('li'); li.textContent = t; tipsUl.appendChild(li); });
@@ -1264,6 +1267,135 @@ function renderResult(geo, weather, selectedSeason = 'auto', selectedDate = '') 
   setupPlannerLaunch(geo, selectedDate, selectedSeason);
   renderSafetyLifeline(geo, weather, verdict, recommendation);
 
+}
+
+function buildKnownCautions(geo, weather, verdict, recommendation, selectedSeason = 'auto', selectedDate = '') {
+  const cautions = [];
+  const uvRelevantNow = isUvRelevantForCurrentContext(weather, selectedDate);
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+  const sunriseMins = timeToMinutes(weather.sunrise);
+  const sunsetMins = timeToMinutes(weather.sunset);
+  const nearDark = sunsetMins != null ? nowMins >= (sunsetMins - 90) : false;
+  const preDawn = sunriseMins != null ? nowMins < sunriseMins : false;
+  const code = Number(weather.code) || 0;
+
+  const add = (level, title, detail, action) => {
+    cautions.push({ level, title, detail, action });
+  };
+
+  if (verdict === 'dangerous' || recommendation.time === 'Not Recommended') {
+    add('critical', 'High-Risk Window', 'Current forecast profile is in a hazardous range for many hikers.', 'Postpone or switch to a low-exposure route and verify local advisories.');
+  }
+
+  if (weather.tempC <= -15 || weather.dailyMinTemp <= -15) {
+    add('critical', 'Severe Cold Stress', `Temperatures are in severe-cold range (${fmt(weather.tempC)}).`, 'Use expedition-grade insulation and protect all exposed skin.');
+  } else if (weather.tempC <= 0 || weather.dailyMinTemp <= 0) {
+    add('high', 'Freeze / Ice Risk', 'Sub-freezing conditions increase slip and exposure risk.', 'Use traction, reduce pace, and avoid shaded icy slopes.');
+  }
+
+  if (weather.tempC >= 35 || weather.dailyMaxTemp >= 35) {
+    add('critical', 'Heat Illness Risk', `Very hot conditions (${fmt(weather.tempC)}) can rapidly cause heat illness.`, 'Start at dawn, enforce hydration breaks, and stop if symptoms appear.');
+  } else if (weather.tempC >= 30 || weather.dailyMaxTemp >= 30) {
+    add('high', 'Heat Load', 'Warm conditions raise dehydration and fatigue risk.', 'Carry more water and shorten exposed ridge time.');
+  }
+
+  if (weather.dailyMaxWind >= 70 || weather.windKph >= 70) {
+    add('critical', 'Severe Wind Hazard', `Peak winds around ${Math.round(kphToMph(weather.dailyMaxWind || weather.windKph))} mph may cause instability and debris risk.`, 'Avoid exposed ridges and turn around before gust fronts.');
+  } else if (weather.dailyMaxWind >= 45 || weather.windKph >= 45) {
+    add('high', 'Strong Wind Exposure', 'Wind can destabilize footing on narrow or exposed sections.', 'Use trekking poles and keep distance from cliff edges.');
+  }
+
+  if (code === 99 || code >= 95) {
+    add('critical', 'Lightning / Thunderstorm', 'Convective storm pattern present with potential lightning hazard.', 'Do not remain on exposed high ground; descend immediately.');
+  }
+
+  if (weather.dailyPrecip >= 12) {
+    add('high', 'Flood / Washout Potential', `${mmToInches(weather.dailyPrecip).toFixed(2)} in (${weather.dailyPrecip} mm) forecast can overwhelm drainage.`, 'Avoid canyons, creek crossings, and narrow drainages.');
+  }
+
+  if ((code >= 71 && code <= 77) || weather.dailyMinTemp <= -3) {
+    add('high', 'Snow / Whiteout Conditions', 'Snow and low visibility can erase trail definition.', 'Carry navigation backup and set strict turnaround points.');
+  }
+
+  if (code >= 45 && code <= 48) {
+    add('moderate', 'Fog / Low Visibility', 'Reduced visibility can cause route-finding mistakes.', 'Slow down, stay on mapped track, and avoid shortcuts.');
+  }
+
+  if (weather.precip > 0 && weather.tempC >= -2 && weather.tempC <= 2) {
+    add('high', 'Black Ice Potential', 'Near-freezing wet conditions can form transparent ice patches.', 'Treat bridges, slabs, and boardwalks as slick surfaces.');
+  }
+
+  if (weather.elevation >= 3500) {
+    add('high', 'Altitude Stress', `${formatElevation(weather.elevation)} can trigger altitude symptoms in unacclimatized hikers.`, 'Pace conservatively and descend if headache/nausea worsens.');
+  } else if (weather.elevation >= 2400) {
+    add('moderate', 'High-Elevation Fatigue', 'Thinner air increases effort and dehydration rate.', 'Take longer rest intervals and hydrate consistently.');
+  }
+
+  if (uvRelevantNow && weather.uvIndex != null && weather.uvIndex >= 10) {
+    add('high', 'UV Exposure', `UV index ${weather.uvIndex.toFixed(1)} can burn skin quickly at elevation.`, 'Use hat, glasses, and broad-spectrum SPF on exposed skin.');
+  }
+
+  if (nearDark || preDawn) {
+    add('high', 'Low-Light Navigation', 'Limited daylight increases navigation and injury risk.', 'Carry a headlamp with spare batteries and shorten objectives.');
+  }
+
+  if (selectedSeason === 'winter') {
+    add('high', 'Winter Profile Active', 'Winter assumptions increase uncertainty in trail surfaces and daylight.', 'Use conservative route choices and plan early turnaround times.');
+  }
+
+  if ((weather.humidity || 0) >= 90 && weather.windKph >= 25 && weather.tempC <= 8) {
+    add('moderate', 'Wind-Chill Stress', 'Cold, humid air plus wind can accelerate heat loss.', 'Add windproof shell and keep hands dry and insulated.');
+  }
+
+  if (!cautions.length) {
+    add('low', 'Standard Backcountry Risk', 'No major red flags detected, but trail hazards are never zero.', 'Share your route plan and maintain conservative decision points.');
+  }
+
+  return cautions.slice(0, 12);
+}
+
+function renderKnownCautions(cautions) {
+  const section = document.getElementById('knownCautionsList');
+  const list = document.getElementById('knownCautionsUl');
+  if (!section || !list) return;
+
+  list.innerHTML = '';
+  if (!Array.isArray(cautions) || !cautions.length) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  cautions.forEach((caution) => {
+    const li = document.createElement('li');
+    li.className = `known-caution ${caution.level || 'moderate'}`;
+
+    const top = document.createElement('div');
+    top.className = 'known-caution-top';
+
+    const title = document.createElement('strong');
+    title.textContent = caution.title;
+
+    const level = document.createElement('span');
+    level.className = 'known-caution-level';
+    level.textContent = String(caution.level || 'moderate').toUpperCase();
+
+    const detail = document.createElement('p');
+    detail.className = 'known-caution-detail';
+    detail.textContent = caution.detail;
+
+    const action = document.createElement('p');
+    action.className = 'known-caution-action';
+    action.textContent = `Action: ${caution.action}`;
+
+    top.appendChild(title);
+    top.appendChild(level);
+    li.appendChild(top);
+    li.appendChild(detail);
+    li.appendChild(action);
+    list.appendChild(li);
+  });
+
+  section.classList.remove('hidden');
 }
 
 function setupPlannerLaunch(geo, selectedDate = '', selectedSeason = 'auto') {
