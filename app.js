@@ -734,6 +734,11 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
     const response = await fetch(url, { ...options, signal: controller.signal });
     if (!response.ok) throw new Error(`Request failed: ${response.status}`);
     return response;
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeoutMs}ms`);
+    }
+    throw err;
   } finally {
     window.clearTimeout(timer);
   }
@@ -799,6 +804,7 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
   const rainLikely = dailyPrecip >= 2 || (code >= 51 && code <= 82) || precip > 0.2;
   const uvRelevantNow = isUvRelevantForCurrentContext(weather, selectedDate);
   const coldAndNotSunny = (tempC <= 10 || dailyMinTemp <= 5) && code >= 3 && code < 45;
+  const uvStrongExposureNow = uvRelevantNow && (weather.isDay === 1 || weather.isDay === true) && code <= 2;
 
   if (tempC <= -20 || dailyMinTemp <= -20) {
     score += 4; warnings.push(`Extremely cold weather (${fmt(tempC)}). Frostbite risk may be elevated for exposed skin.`);
@@ -814,7 +820,7 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
     score += 2; warnings.push(`Very hot (${fmt(tempC)}). Carry extra water and consider an early start.`);
   }
 
-  if (weather.uvIndex != null && uvRelevantNow) {
+  if (weather.uvIndex != null && uvStrongExposureNow) {
     if (weather.uvIndex >= 11) {
       score += 2;
       if (coldAndNotSunny) {
@@ -827,7 +833,7 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
         score += 1;
         warnings.push(`Very high UV index (${weather.uvIndex.toFixed(1)}). Sun protection is required.`);
       }
-    } else if (weather.uvIndex >= 7) {
+    } else if (weather.uvIndex >= 8) {
       if (!coldAndNotSunny) {
         warnings.push(`High UV index (${weather.uvIndex.toFixed(1)}). Use sun protection.`);
       }
@@ -951,7 +957,7 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
     || dailyMinTemp <= 5
     || windKph >= 30
     || dailyMaxWind >= 35
-    || (weather.uvIndex != null && weather.uvIndex >= 9 && uvRelevantNow && !coldAndNotSunny)
+    || (weather.uvIndex != null && weather.uvIndex >= 9 && uvStrongExposureNow && !coldAndNotSunny)
   ) && verdict === 'great') {
     verdict = 'okay';
     message = 'Forecast conditions suggest a possible hiking window, but caution is recommended due to wind, temperature, or UV exposure. Prepare gear carefully and verify local trail conditions before heading out.';
@@ -1135,7 +1141,8 @@ function isUvRelevantForCurrentContext(weather, selectedDate = '') {
 
   const now = new Date();
   const nowMins = now.getHours() * 60 + now.getMinutes();
-  return nowMins >= sunriseMins && nowMins <= sunsetMins;
+  // Only treat UV as high-priority in a peak daylight window.
+  return nowMins >= (sunriseMins + 120) && nowMins <= (sunsetMins - 90);
 }
 
 function timeToMinutes(hhmm) {
@@ -1484,7 +1491,8 @@ function renderSafetyLifeline(geo, weather, verdict, recommendation) {
   renderNoaaAlerts(geo);
   bindOfflinePack(geo, weather, verdict, recommendation);
   bindCoverageTracker();
-  bindResourceCalculator(weather);
+  bindResourceCalculator(weather, geo);
+  setupRouteMapAndDirections(geo);
   renderEssentialsChecklist();
   renderCoverageHeatmap();
   renderBatteryModeStatus();
@@ -1731,18 +1739,47 @@ function coverageQuality(point) {
   return 1;
 }
 
-function bindResourceCalculator(weather) {
+function bindResourceCalculator(weather, geo) {
   const tripInput = document.getElementById('tripHoursInput');
   const bufferInput = document.getElementById('bufferMinsInput');
-  if (!tripInput || !bufferInput) return;
+  const distanceInput = document.getElementById('distanceMilesInput');
+  const paceInput = document.getElementById('paceMphInput');
+  const summaryPaceSelect = document.getElementById('summaryPaceSelect');
+  if (!tripInput || !bufferInput || !distanceInput || !paceInput) return;
+
+  const pacePresets = {
+    easy: 1.6,
+    moderate: 2.0,
+    brisk: 2.6,
+    fast: 3.2,
+    trailrun: 4.0
+  };
+
+  const syncPaceSelectFromInput = () => {
+    if (!summaryPaceSelect) return;
+    const pace = Number(paceInput.value) || 2;
+    let matched = 'custom';
+    Object.entries(pacePresets).forEach(([key, value]) => {
+      if (Math.abs(pace - value) < 0.06) matched = key;
+    });
+    summaryPaceSelect.value = matched;
+  };
 
   const recalc = () => {
     const tripHours = Math.max(1, Math.min(48, Number(tripInput.value) || 4));
     const bufferMins = Math.max(15, Math.min(300, Number(bufferInput.value) || 90));
+    const distanceMiles = Math.max(0.5, Math.min(80, Number(distanceInput.value) || 6));
+    const paceMph = Math.max(0.5, Math.min(5, Number(paceInput.value) || 2));
     const sunsetMins = timeToMinutes(weather.sunset);
 
     const turnAroundEl = document.getElementById('turnAroundTime');
     const waterEl = document.getElementById('waterTarget');
+    const movingEl = document.getElementById('estimatedMovingTime');
+    const totalEl = document.getElementById('estimatedTotalTime');
+    const summaryDistanceEl = document.getElementById('summaryDistance');
+    const summaryMovingEl = document.getElementById('summaryMovingTime');
+    const summaryTotalEl = document.getElementById('summaryTotalTime');
+    const summaryDistanceNoteEl = document.getElementById('summaryDistanceNote');
 
     if (turnAroundEl) {
       if (sunsetMins == null) {
@@ -1761,11 +1798,108 @@ function bindResourceCalculator(weather) {
       const ounces = Math.round(liters * 33.814);
       waterEl.textContent = `${liters} L (~${ounces} oz)`;
     }
+
+    const movingHours = distanceMiles / paceMph;
+    const breaksHours = distanceMiles >= 12 ? 1 : distanceMiles >= 8 ? 0.5 : 0.25;
+    const totalHours = movingHours + breaksHours;
+    if (movingEl) movingEl.textContent = formatDurationHours(movingHours);
+    if (totalEl) totalEl.textContent = formatDurationHours(totalHours);
+    if (summaryDistanceEl) summaryDistanceEl.textContent = `${distanceMiles.toFixed(1)} mi`;
+    if (summaryMovingEl) summaryMovingEl.textContent = formatDurationHours(movingHours);
+    if (summaryTotalEl) summaryTotalEl.textContent = formatDurationHours(totalHours);
+    if (summaryDistanceNoteEl) {
+      summaryDistanceNoteEl.textContent = `Based on ${distanceMiles.toFixed(1)} miles at ${paceMph.toFixed(1)} mph plus short breaks.`;
+    }
   };
+
+  // If we can estimate approach distance from current location, prefill a useful trail-distance default.
+  if (geo && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const approachMiles = haversineMiles(pos.coords.latitude, pos.coords.longitude, geo.lat, geo.lon);
+      if (Number.isFinite(approachMiles) && approachMiles > 0.2 && Number(distanceInput.value) <= 6) {
+        distanceInput.value = String(Math.max(2, Math.min(20, Math.round(approachMiles * 2))));
+        recalc();
+      }
+    }, () => null, { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 });
+  }
 
   tripInput.oninput = recalc;
   bufferInput.oninput = recalc;
+  distanceInput.oninput = recalc;
+  paceInput.oninput = () => {
+    syncPaceSelectFromInput();
+    recalc();
+  };
+
+  if (summaryPaceSelect) {
+    summaryPaceSelect.onchange = () => {
+      const selected = summaryPaceSelect.value;
+      if (Object.prototype.hasOwnProperty.call(pacePresets, selected)) {
+        paceInput.value = String(pacePresets[selected]);
+      }
+      recalc();
+    };
+  }
+
+  syncPaceSelectFromInput();
   recalc();
+}
+
+function formatDurationHours(hours) {
+  const safe = Math.max(0, Number(hours) || 0);
+  const whole = Math.floor(safe);
+  const mins = Math.round((safe - whole) * 60);
+  if (whole <= 0) return `${Math.max(1, mins)} min`;
+  if (mins === 0) return `${whole}h`;
+  return `${whole}h ${mins}m`;
+}
+
+function haversineMiles(lat1, lon1, lat2, lon2) {
+  const toRad = (deg) => deg * Math.PI / 180;
+  const R = 3958.8;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function setupRouteMapAndDirections(geo) {
+  const mapFrame = document.getElementById('googleMapEmbed');
+  const dirBtn = document.getElementById('openGoogleDirectionsBtn');
+  const mapLink = document.getElementById('openGoogleMapLink');
+  const status = document.getElementById('routeDistanceStatus');
+  if (!geo || !mapFrame || !dirBtn || !mapLink || !status) return;
+
+  const destination = `${geo.lat},${geo.lon}`;
+  mapFrame.src = `https://www.google.com/maps?q=${encodeURIComponent(destination)}&z=14&output=embed`;
+  mapLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`;
+
+  dirBtn.onclick = () => {
+    const base = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=walking`;
+    window.open(base, '_blank', 'noopener');
+  };
+
+  if (!navigator.geolocation) {
+    status.textContent = 'Approach distance: location not available on this device.';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const origin = `${pos.coords.latitude},${pos.coords.longitude}`;
+    const miles = haversineMiles(pos.coords.latitude, pos.coords.longitude, geo.lat, geo.lon);
+    status.textContent = `Approach distance (straight-line): ${miles.toFixed(1)} miles. Open directions for exact route distance.`;
+    dirBtn.onclick = () => {
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=walking`;
+      window.open(url, '_blank', 'noopener');
+    };
+  }, () => {
+    status.textContent = 'Approach distance: allow location permission to compute miles from your position.';
+  }, {
+    enableHighAccuracy: false,
+    timeout: 7000,
+    maximumAge: 300000
+  });
 }
 
 function renderEssentialsChecklist() {

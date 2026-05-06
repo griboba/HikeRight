@@ -126,6 +126,27 @@
         </div>
       </div>
 
+      <div class="hike-summary-box">
+        <p class="recommend-title">Hike Length and Time</p>
+        <div class="summary-controls">
+          <label for="summaryPaceSelect">Select your moving pace</label>
+          <select id="summaryPaceSelect">
+            <option value="easy">Easy (1.6 mph)</option>
+            <option value="moderate" selected>Moderate (2.0 mph)</option>
+            <option value="brisk">Brisk (2.6 mph)</option>
+            <option value="fast">Fast (3.2 mph)</option>
+            <option value="trailrun">Trail Run (4.0 mph)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="recommend-grid">
+          <div><span class="r-label">Estimated Hike Length</span><span id="summaryDistance" class="r-value">6.0 mi</span></div>
+          <div><span class="r-label">Estimated Moving Time</span><span id="summaryMovingTime" class="r-value">3h 0m</span></div>
+          <div><span class="r-label">Estimated Total Time</span><span id="summaryTotalTime" class="r-value">3h 30m</span></div>
+        </div>
+        <p id="summaryDistanceNote" class="planner-sub">Estimate updates from your distance and pace settings below.</p>
+      </div>
+
       <div class="detail-grid">
         <div class="detail-item"><span class="d-label">💧 Humidity</span><span class="d-value" id="dHumidity">—</span></div>
         <div class="detail-item"><span class="d-label">💨 Wind</span><span class="d-value" id="dWind">—</span></div>
@@ -208,20 +229,37 @@
 
           <article class="lifeline-card">
             <h4>Resource Management</h4>
-            <p>Compute a firm turnaround time and hydration target to avoid getting caught out after dark.</p>
+            <p>Compute distance, hiking time, turnaround deadline, and hydration target to avoid getting caught out after dark.</p>
             <div class="lifeline-fields two-col">
               <label for="tripHoursInput">Planned round-trip hours</label>
               <input id="tripHoursInput" type="number" min="1" max="48" value="4" step="0.5" />
               <label for="bufferMinsInput">Safety buffer before sunset (minutes)</label>
               <input id="bufferMinsInput" type="number" min="15" max="300" value="90" step="15" />
+              <label for="distanceMilesInput">Planned trail distance (miles)</label>
+              <input id="distanceMilesInput" type="number" min="0.5" max="80" value="6" step="0.5" />
+              <label for="paceMphInput">Average moving pace (mph)</label>
+              <input id="paceMphInput" type="number" min="0.5" max="5" value="2" step="0.1" />
             </div>
             <div class="recommend-box">
               <div class="recommend-grid">
                 <div><span class="r-label">Latest Turn Around</span><span id="turnAroundTime" class="r-value">—</span></div>
                 <div><span class="r-label">Water Target</span><span id="waterTarget" class="r-value">—</span></div>
+                <div><span class="r-label">Estimated Moving Time</span><span id="estimatedMovingTime" class="r-value">—</span></div>
+                <div><span class="r-label">Estimated Total Trip</span><span id="estimatedTotalTime" class="r-value">—</span></div>
                 <div><span class="r-label">Battery Saver Mode</span><span id="batteryModeStatus" class="r-value">—</span></div>
               </div>
             </div>
+          </article>
+
+          <article class="lifeline-card">
+            <h4>Route Map and Navigation</h4>
+            <p>Use Google Maps to navigate exactly to this trail area and estimate your approach distance from your current location.</p>
+            <p id="routeDistanceStatus" class="lifeline-status">Approach distance: waiting for location permission...</p>
+            <div class="lifeline-row">
+              <button id="openGoogleDirectionsBtn" class="save-cal-btn" type="button">Open Walking Directions</button>
+              <a id="openGoogleMapLink" class="more-btn route-link" target="_blank" rel="noopener noreferrer" href="#">Open Google Map</a>
+            </div>
+            <iframe id="googleMapEmbed" class="map-embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Trail map"></iframe>
           </article>
 
           <article class="lifeline-card">

@@ -1303,6 +1303,43 @@ footer {
   gap: 0.55rem;
 }
 
+.hike-summary-box {
+  background: #eef7ff;
+  border: 1px solid #8bb8e8;
+  border-radius: 12px;
+  padding: 0.9rem;
+}
+
+.hike-summary-box .r-label {
+  color: #234867;
+}
+
+.hike-summary-box .r-value {
+  color: #0a2f4f;
+  font-weight: 800;
+}
+
+.summary-controls {
+  display: grid;
+  gap: 0.3rem;
+  margin-bottom: 0.65rem;
+}
+
+.summary-controls label {
+  font-size: 0.78rem;
+  color: #234867;
+  font-weight: 700;
+}
+
+.summary-controls select {
+  border: 1px solid #8bb8e8;
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.88rem;
+  font-family: inherit;
+  background: #fff;
+}
+
 .known-caution {
   border: 1px solid #e0c39b;
   border-left: 6px solid #b0bec5;
@@ -1402,6 +1439,20 @@ footer {
   flex-wrap: wrap;
   gap: 0.45rem;
   align-items: center;
+}
+
+.route-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-embed {
+  width: 100%;
+  min-height: 250px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
 }
 
 .lifeline-status {
