@@ -130,14 +130,16 @@
         <p class="recommend-title">Hike Length and Time</p>
         <div class="summary-controls">
           <label for="summaryPaceSelect">Select your moving pace</label>
-          <select id="summaryPaceSelect">
-            <option value="easy">Easy (1.6 mph)</option>
-            <option value="moderate" selected>Moderate (2.0 mph)</option>
-            <option value="brisk">Brisk (2.6 mph)</option>
-            <option value="fast">Fast (3.2 mph)</option>
-            <option value="trailrun">Trail Run (4.0 mph)</option>
-            <option value="custom">Custom</option>
-          </select>
+          <div class="summary-pace-row">
+            <select id="summaryPaceSelect">
+              <option value="walking" selected>Walking (2.0 mph)</option>
+              <option value="jogging">Jogging (3.5 mph)</option>
+              <option value="running">Running (5.0 mph)</option>
+              <option value="sprinting">Sprinting (7.0 mph)</option>
+              <option value="custom">Custom</option>
+            </select>
+            <input id="summaryCustomPaceInput" type="number" min="0.5" max="8" step="0.1" value="2.0" disabled aria-label="Custom pace in mph" />
+          </div>
         </div>
         <div class="recommend-grid">
           <div><span class="r-label">Estimated Hike Length</span><span id="summaryDistance" class="r-value">6.0 mi</span></div>

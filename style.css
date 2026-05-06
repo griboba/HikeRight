@@ -1340,6 +1340,26 @@ footer {
   background: #fff;
 }
 
+.summary-pace-row {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 0.45rem;
+}
+
+.summary-pace-row input {
+  border: 1px solid #8bb8e8;
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.88rem;
+  font-family: inherit;
+  background: #fff;
+}
+
+.summary-pace-row input:disabled {
+  background: #eef2f5;
+  color: #7a8a99;
+}
+
 .known-caution {
   border: 1px solid #e0c39b;
   border-left: 6px solid #b0bec5;

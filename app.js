@@ -1745,14 +1745,14 @@ function bindResourceCalculator(weather, geo) {
   const distanceInput = document.getElementById('distanceMilesInput');
   const paceInput = document.getElementById('paceMphInput');
   const summaryPaceSelect = document.getElementById('summaryPaceSelect');
+  const summaryCustomPaceInput = document.getElementById('summaryCustomPaceInput');
   if (!tripInput || !bufferInput || !distanceInput || !paceInput) return;
 
   const pacePresets = {
-    easy: 1.6,
-    moderate: 2.0,
-    brisk: 2.6,
-    fast: 3.2,
-    trailrun: 4.0
+    walking: 2.0,
+    jogging: 3.5,
+    running: 5.0,
+    sprinting: 7.0
   };
 
   const syncPaceSelectFromInput = () => {
@@ -1763,6 +1763,10 @@ function bindResourceCalculator(weather, geo) {
       if (Math.abs(pace - value) < 0.06) matched = key;
     });
     summaryPaceSelect.value = matched;
+    if (summaryCustomPaceInput) {
+      summaryCustomPaceInput.value = pace.toFixed(1);
+      summaryCustomPaceInput.disabled = matched !== 'custom';
+    }
   };
 
   const recalc = () => {
@@ -1837,6 +1841,20 @@ function bindResourceCalculator(weather, geo) {
       if (Object.prototype.hasOwnProperty.call(pacePresets, selected)) {
         paceInput.value = String(pacePresets[selected]);
       }
+      if (selected === 'custom' && summaryCustomPaceInput) {
+        const custom = Math.max(0.5, Math.min(8, Number(summaryCustomPaceInput.value) || Number(paceInput.value) || 2));
+        paceInput.value = custom.toFixed(1);
+      }
+      syncPaceSelectFromInput();
+      recalc();
+    };
+  }
+
+  if (summaryCustomPaceInput) {
+    summaryCustomPaceInput.oninput = () => {
+      if (!summaryPaceSelect || summaryPaceSelect.value !== 'custom') return;
+      const custom = Math.max(0.5, Math.min(8, Number(summaryCustomPaceInput.value) || 2));
+      paceInput.value = custom.toFixed(1);
       recalc();
     };
   }
