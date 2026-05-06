@@ -797,6 +797,7 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
   const tips     = [];
   let   score    = 0;
   const rainLikely = dailyPrecip >= 2 || (code >= 51 && code <= 82) || precip > 0.2;
+  const uvRelevantNow = isUvRelevantForCurrentContext(weather, selectedDate);
 
   if (tempC <= -20 || dailyMinTemp <= -20) {
     score += 4; warnings.push(`Extremely cold weather (${fmt(tempC)}). Frostbite risk may be elevated for exposed skin.`);
@@ -812,7 +813,7 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
     score += 2; warnings.push(`Very hot (${fmt(tempC)}). Carry extra water and consider an early start.`);
   }
 
-  if (weather.uvIndex != null) {
+  if (weather.uvIndex != null && uvRelevantNow) {
     if (weather.uvIndex >= 11) {
       score += 2;
       warnings.push(`Extreme UV index (${weather.uvIndex.toFixed(1)}). Sun exposure risk is high.`);
@@ -941,7 +942,7 @@ function analyse(weather, selectedSeason = 'auto', geo = null, selectedDate = ''
     || dailyMinTemp <= 5
     || windKph >= 30
     || dailyMaxWind >= 35
-    || (weather.uvIndex != null && weather.uvIndex >= 9)
+    || (weather.uvIndex != null && weather.uvIndex >= 9 && uvRelevantNow)
   ) && verdict === 'great') {
     verdict = 'okay';
     message = 'Forecast conditions suggest a possible hiking window, but caution is recommended due to wind, temperature, or UV exposure. Prepare gear carefully and verify local trail conditions before heading out.';
@@ -1105,6 +1106,27 @@ function formatSelectedDate(isoDate) {
   const d = new Date(`${isoDate}T12:00:00`);
   if (Number.isNaN(d.getTime())) return 'Selected date';
   return d.toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function localTodayIso() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function isUvRelevantForCurrentContext(weather, selectedDate = '') {
+  const targetDate = selectedDate ? selectedDate.slice(0, 10) : localTodayIso();
+  if (targetDate !== localTodayIso()) return true;
+
+  const sunriseMins = timeToMinutes(weather.sunrise);
+  const sunsetMins = timeToMinutes(weather.sunset);
+  if (sunriseMins == null || sunsetMins == null) return true;
+
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  return nowMins >= sunriseMins && nowMins <= sunsetMins;
 }
 
 function timeToMinutes(hhmm) {
