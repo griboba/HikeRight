@@ -1,5 +1,5 @@
-const SHELL_CACHE = 'hikeright-shell-v2';
-const RUNTIME_CACHE = 'hikeright-runtime-v2';
+const SHELL_CACHE = 'hikeright-shell-v3';
+const RUNTIME_CACHE = 'hikeright-runtime-v3';
 
 const SHELL_ASSETS = [
   './',
@@ -33,6 +33,16 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        const copy = response.clone();
+        caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, copy)).catch(() => null);
+        return response;
+      }).catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html')))
+    );
+    return;
+  }
   const reqUrl = new URL(event.request.url);
 
   if (reqUrl.origin === self.location.origin) {
