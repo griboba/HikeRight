@@ -1070,6 +1070,32 @@ footer {
   margin-top: 0;
 }
 
+.trip-basics-grid {
+  align-items: end;
+}
+
+.planner-miles-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.95rem;
+  color: var(--text);
+  background: #fff;
+  font-family: inherit;
+}
+
+.planner-miles-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.12);
+}
+
+.trip-basics-note {
+  margin-top: 0.6rem;
+  margin-bottom: 0;
+}
+
 @media (max-width: 760px) {
   .planner-calendar-grid {
     grid-template-columns: repeat(2, minmax(120px, 1fr));

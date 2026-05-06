@@ -11,6 +11,9 @@ const plannerSafetyLevel = document.getElementById('plannerSafetyLevel');
 const plannerBetterDate = document.getElementById('plannerBetterDate');
 const plannerWarnings = document.getElementById('plannerWarnings');
 const plannerWarningsUl = document.getElementById('plannerWarningsUl');
+const plannerDestination = document.getElementById('plannerDestination');
+const plannerMilesInput = document.getElementById('plannerMilesInput');
+const plannerEstimatedTime = document.getElementById('plannerEstimatedTime');
 
 const settingLanguage = document.getElementById('settingLanguage');
 const settingUnits = document.getElementById('settingUnits');
@@ -93,6 +96,7 @@ async function initPlanner() {
 
   plannerLocationName.textContent = `Date Planner: ${payload.geo.name || 'Selected Location'}`;
   plannerLocationSub.textContent = payload.geo.sub || 'Select a date below';
+  setupTripBasics(payload.geo, params.get('miles') || '4');
 
   setupDateInput(payload.selectedDate || payload.weather.forecastDates[0]);
   renderCalendar(payload.weather.forecastDates);
@@ -322,6 +326,50 @@ function renderWarnings(items) {
     plannerWarningsUl.appendChild(li);
   });
   plannerWarnings.classList.remove('hidden');
+}
+
+function setupTripBasics(geo, milesRaw = '4') {
+  if (plannerDestination) {
+    plannerDestination.textContent = geo && geo.sub
+      ? `${geo.name} (${geo.sub})`
+      : (geo && geo.name ? geo.name : 'Selected Location');
+  }
+
+  const parsed = Number.parseFloat(String(milesRaw));
+  const miles = Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
+
+  if (plannerMilesInput) {
+    plannerMilesInput.value = String(miles);
+    plannerMilesInput.addEventListener('input', () => {
+      const nextMiles = Number.parseFloat(plannerMilesInput.value);
+      updateEstimatedTime(nextMiles);
+    });
+  }
+
+  updateEstimatedTime(miles);
+}
+
+function updateEstimatedTime(miles) {
+  if (!plannerEstimatedTime) return;
+
+  if (!Number.isFinite(miles) || miles <= 0) {
+    plannerEstimatedTime.textContent = 'Enter miles';
+    return;
+  }
+
+  const briskHours = miles / 2.7;
+  const relaxedHours = miles / 2.0;
+  plannerEstimatedTime.textContent = `${formatDuration(briskHours)} - ${formatDuration(relaxedHours)}`;
+}
+
+function formatDuration(hoursFloat) {
+  const totalMins = Math.max(1, Math.round(hoursFloat * 60));
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+
+  if (hours === 0) return `${mins} min`;
+  if (mins === 0) return `${hours} hr`;
+  return `${hours} hr ${mins} min`;
 }
 
 function showPlannerError(message) {

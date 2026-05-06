@@ -104,7 +104,19 @@
         <label for="plannerDateInput">Or choose any date</label>
         <input type="date" id="plannerDateInput" />
       </div>
-      <p class="planner-sub">For a 4-mile route, plan around 1.5 hours, or up to 2 hours at a relaxed pace.</p>
+
+      <div class="recommend-box">
+        <p class="recommend-title">Trip Basics</p>
+        <div class="recommend-grid trip-basics-grid">
+          <div><span class="r-label">Where To Go</span><span id="plannerDestination" class="r-value">—</span></div>
+          <div>
+            <span class="r-label">Miles</span>
+            <input id="plannerMilesInput" class="planner-miles-input" type="number" min="0.5" step="0.5" value="4" />
+          </div>
+          <div><span class="r-label">Estimated Time</span><span id="plannerEstimatedTime" class="r-value">—</span></div>
+        </div>
+        <p class="planner-sub trip-basics-note">Time estimate assumes about 2-2.7 mph hiking pace.</p>
+      </div>
 
       <div id="plannerVerdict" class="verdict-message okay">Select a date to see warnings.</div>
 

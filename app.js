@@ -1407,6 +1407,7 @@ function setupPlannerLaunch(geo, selectedDate = '', selectedSeason = 'auto') {
     base.searchParams.set('lon', String(geo.lon));
     base.searchParams.set('name', geo.name || 'Selected Location');
     base.searchParams.set('sub', geo.sub || '');
+    base.searchParams.set('miles', '4');
     if (selectedDate) base.searchParams.set('date', selectedDate);
     if (selectedSeason) base.searchParams.set('season', selectedSeason);
 
