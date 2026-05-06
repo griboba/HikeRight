@@ -44,6 +44,33 @@ const userSettings = loadUserSettings();
 let activeCoverageWatchId = null;
 let checkinTimerHandle = null;
 
+// ─── Dynamic Battery Profile ──────────────────────────────────────────────────
+// Uses Battery Status API (where supported) to automatically tier GPS accuracy.
+// Tiers: full (>40%) → saver (15-40%) → critical (≤15%)
+// Falls back to manual batterySaver setting when API is unavailable.
+async function getGeoOptions(isContinuous = false) {
+  if ('getBattery' in navigator) {
+    try {
+      const bat = await navigator.getBattery();
+      const pct = Math.round(bat.level * 100);
+      if (pct <= 15) {
+        return { enableHighAccuracy: false, maximumAge: isContinuous ? 600000 : 480000, timeout: 20000 };
+      }
+      if (pct <= 40) {
+        return { enableHighAccuracy: false, maximumAge: isContinuous ? 180000 : 150000, timeout: 14000 };
+      }
+      return { enableHighAccuracy: true, maximumAge: isContinuous ? 45000 : 30000, timeout: 8000 };
+    } catch { /* fall through */ }
+  }
+  // Manual fallback
+  const saver = userSettings.batterySaver === 'on';
+  return {
+    enableHighAccuracy: !saver,
+    maximumAge: saver ? (isContinuous ? 180000 : 300000) : (isContinuous ? 45000 : 60000),
+    timeout: saver ? (isContinuous ? 12000 : 14000) : (isContinuous ? 7000 : 10000)
+  };
+}
+
 const TEN_ESSENTIALS = [
   'Navigation (map, compass, GPS backup)',
   'Headlamp with extra batteries',
@@ -267,6 +294,7 @@ async function runNearMe() {
   if (btn) btn.disabled = true;
   setState('loading');
 
+  const geoOpts = await getGeoOptions(false);
   navigator.geolocation.getCurrentPosition(async (position) => {
     try {
       const lat = position.coords.latitude;
@@ -295,11 +323,7 @@ async function runNearMe() {
     runInFlight = false;
     nearMeBtn.disabled = false;
     if (btn) btn.disabled = false;
-  }, {
-    enableHighAccuracy: userSettings.batterySaver !== 'on',
-    timeout: userSettings.batterySaver === 'on' ? 14000 : 10000,
-    maximumAge: userSettings.batterySaver === 'on' ? 300000 : 60000
-  });
+  }, geoOpts);
 }
 
 async function reverseGeocode(lat, lon) {
@@ -1601,8 +1625,9 @@ function bindCoverageTracker() {
   const stopBtn = document.getElementById('stopCoverageTrackBtn');
   if (!startBtn || !stopBtn || !navigator.geolocation) return;
 
-  startBtn.onclick = () => {
+  startBtn.onclick = async () => {
     if (activeCoverageWatchId != null) return;
+    const geoOpts = await getGeoOptions(true);
     activeCoverageWatchId = navigator.geolocation.watchPosition((pos) => {
       const points = getCoverageTrack();
       const connection = navigator.connection || {};
@@ -1616,11 +1641,7 @@ function bindCoverageTracker() {
       });
       localStorage.setItem(COVERAGE_TRACK_KEY, JSON.stringify(points.slice(-80)));
       renderCoverageHeatmap();
-    }, () => null, {
-      enableHighAccuracy: userSettings.batterySaver !== 'on',
-      maximumAge: userSettings.batterySaver === 'on' ? 180000 : 45000,
-      timeout: userSettings.batterySaver === 'on' ? 12000 : 7000
-    });
+    }, () => null, geoOpts);
   };
 
   stopBtn.onclick = () => {
@@ -1750,10 +1771,25 @@ function renderEssentialsChecklist() {
   update();
 }
 
-function renderBatteryModeStatus() {
+async function renderBatteryModeStatus() {
   const el = document.getElementById('batteryModeStatus');
   if (!el) return;
-  el.textContent = userSettings.batterySaver === 'on' ? 'Extreme Saver ON' : 'Standard';
+  if ('getBattery' in navigator) {
+    try {
+      const bat = await navigator.getBattery();
+      const pct = Math.round(bat.level * 100);
+      const chg = bat.charging ? ' ⚡' : '';
+      let label;
+      if (pct <= 15) label = `Auto: Critical (${pct}%${chg}) — GPS reduced`;
+      else if (pct <= 40) label = `Auto: Saver (${pct}%${chg}) — GPS balanced`;
+      else label = `Auto: Full accuracy (${pct}%${chg})`;
+      el.textContent = label;
+      bat.addEventListener('levelchange', renderBatteryModeStatus);
+      bat.addEventListener('chargingchange', renderBatteryModeStatus);
+      return;
+    } catch { /* fall through */ }
+  }
+  el.textContent = userSettings.batterySaver === 'on' ? 'Manual: Extreme Saver' : 'Manual: Standard';
 }
 
 function renderPrivacyState() {

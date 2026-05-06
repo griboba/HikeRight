@@ -1298,6 +1298,25 @@ footer {
   font-weight: 700;
 }
 
+.source-badge {
+  font-size: 0.72rem;
+  color: var(--text-muted, #666);
+  margin-top: 0.5rem;
+}
+.source-badge a, .satellite-link {
+  color: var(--accent, #2e7d32);
+  text-decoration: underline dotted;
+  font-weight: 600;
+}
+.source-badge a:hover, .satellite-link:hover {
+  text-decoration: underline;
+}
+.source-note {
+  font-size: 0.75rem;
+  font-weight: normal;
+  font-style: italic;
+}
+
 .lifeline-list {
   list-style: none;
   display: flex;
