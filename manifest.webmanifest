@@ -9,8 +9,8 @@
   "description": "Offline-first hike safety planner with weather warnings, check-ins, and emergency prep tools.",
   "icons": [
     {
-      "src": "preview.png",
-      "sizes": "512x512",
+      "src": "assets/logo.png",
+      "sizes": "144x144",
       "type": "image/png"
     }
   ]

@@ -1455,6 +1455,16 @@ function renderMoreInsights(geo, weather, verdict, selectedDate = '') {
     });
   }
 
+  const credibilityUl = document.getElementById('credibilityChecksUl');
+  if (credibilityUl) {
+    credibilityUl.innerHTML = '';
+    buildCredibilityChecks(weather, selectedDate).forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      credibilityUl.appendChild(li);
+    });
+  }
+
   const linksEl = document.getElementById('reviewLinks');
   if (linksEl) {
     const place = `${geo?.name || ''} ${geo?.sub || ''}`.trim();
@@ -1465,6 +1475,45 @@ function renderMoreInsights(geo, weather, verdict, selectedDate = '') {
       `<a href="https://www.tripadvisor.com/Search?q=${encoded}" target="_blank" rel="noopener noreferrer">Tripadvisor</a>`
     ].join('');
   }
+}
+
+function getStoredResultCreatedAt() {
+  try {
+    const raw = sessionStorage.getItem('hikeRightResult');
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    return typeof payload.createdAt === 'number' ? payload.createdAt : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildCredibilityChecks(weather, selectedDate = '') {
+  const checks = [];
+  const createdAt = getStoredResultCreatedAt();
+  if (createdAt) {
+    const mins = Math.max(0, Math.round((Date.now() - createdAt) / 60000));
+    checks.push(`Forecast pull age: ${mins} minute${mins === 1 ? '' : 's'} since this result was generated.`);
+  } else {
+    checks.push('Forecast pull age: unavailable for this session. Re-run check before departure.');
+  }
+
+  checks.push('Primary weather source: Open-Meteo forecast API (7-day model output).');
+  checks.push('NOAA alerts appear only for U.S. coordinates; non-U.S. areas need local weather authority alerts.');
+  checks.push('Safety verdict is a rules-based aid, not a certified incident-risk prediction.');
+
+  if (!selectedDate) {
+    checks.push('This view emphasizes current-day conditions; rerun near departure time for best reliability.');
+  } else {
+    checks.push(`Selected date mode: ${formatSelectedDate(selectedDate)}. Accuracy decreases further from the current day.`);
+  }
+
+  const hasSunTimes = Boolean(weather && weather.sunrise && weather.sunset);
+  checks.push(hasSunTimes
+    ? `Sun window basis available: sunrise ${weather.sunrise}, sunset ${weather.sunset}.`
+    : 'Sun window basis unavailable: sunrise/sunset missing from data source.');
+
+  return checks;
 }
 
 function setupSafetyCenterButton() {
@@ -1744,8 +1793,11 @@ function bindResourceCalculator(weather, geo) {
   const bufferInput = document.getElementById('bufferMinsInput');
   const distanceInput = document.getElementById('distanceMilesInput');
   const paceInput = document.getElementById('paceMphInput');
-  const summaryPaceSelect = document.getElementById('summaryPaceSelect');
+  const summaryPaceButtonsWrap = document.getElementById('summaryPaceButtons');
   const summaryCustomPaceInput = document.getElementById('summaryCustomPaceInput');
+  const paceButtons = summaryPaceButtonsWrap
+    ? Array.from(summaryPaceButtonsWrap.querySelectorAll('.pace-btn'))
+    : [];
   if (!tripInput || !bufferInput || !distanceInput || !paceInput) return;
 
   const pacePresets = {
@@ -1755,17 +1807,30 @@ function bindResourceCalculator(weather, geo) {
     sprinting: 7.0
   };
 
+  let customModeActive = false;
+
+  const setActivePaceButton = (mode) => {
+    paceButtons.forEach((btn) => {
+      const active = btn.dataset.pace === mode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  };
+
   const syncPaceSelectFromInput = () => {
-    if (!summaryPaceSelect) return;
     const pace = Number(paceInput.value) || 2;
     let matched = 'custom';
     Object.entries(pacePresets).forEach(([key, value]) => {
       if (Math.abs(pace - value) < 0.06) matched = key;
     });
-    summaryPaceSelect.value = matched;
+    if (!customModeActive) {
+      setActivePaceButton(matched);
+    } else {
+      setActivePaceButton('custom');
+    }
     if (summaryCustomPaceInput) {
       summaryCustomPaceInput.value = pace.toFixed(1);
-      summaryCustomPaceInput.disabled = matched !== 'custom';
+      summaryCustomPaceInput.disabled = !customModeActive;
     }
   };
 
@@ -1773,7 +1838,7 @@ function bindResourceCalculator(weather, geo) {
     const tripHours = Math.max(1, Math.min(48, Number(tripInput.value) || 4));
     const bufferMins = Math.max(15, Math.min(300, Number(bufferInput.value) || 90));
     const distanceMiles = Math.max(0.5, Math.min(80, Number(distanceInput.value) || 6));
-    const paceMph = Math.max(0.5, Math.min(5, Number(paceInput.value) || 2));
+    const paceMph = Math.max(0.5, Math.min(8, Number(paceInput.value) || 2));
     const sunsetMins = timeToMinutes(weather.sunset);
 
     const turnAroundEl = document.getElementById('turnAroundTime');
@@ -1835,24 +1900,31 @@ function bindResourceCalculator(weather, geo) {
     recalc();
   };
 
-  if (summaryPaceSelect) {
-    summaryPaceSelect.onchange = () => {
-      const selected = summaryPaceSelect.value;
-      if (Object.prototype.hasOwnProperty.call(pacePresets, selected)) {
-        paceInput.value = String(pacePresets[selected]);
-      }
-      if (selected === 'custom' && summaryCustomPaceInput) {
-        const custom = Math.max(0.5, Math.min(8, Number(summaryCustomPaceInput.value) || Number(paceInput.value) || 2));
-        paceInput.value = custom.toFixed(1);
+  paceButtons.forEach((btn) => {
+    btn.onclick = () => {
+      const selected = btn.dataset.pace || 'walking';
+      if (selected === 'custom') {
+        customModeActive = true;
+        if (summaryCustomPaceInput) {
+          summaryCustomPaceInput.disabled = false;
+          const custom = Math.max(0.5, Math.min(8, Number(summaryCustomPaceInput.value) || Number(paceInput.value) || 2));
+          paceInput.value = custom.toFixed(1);
+          summaryCustomPaceInput.focus();
+          summaryCustomPaceInput.select();
+        }
+      } else {
+        customModeActive = false;
+        const preset = pacePresets[selected];
+        if (Number.isFinite(preset)) paceInput.value = String(preset);
       }
       syncPaceSelectFromInput();
       recalc();
     };
-  }
+  });
 
   if (summaryCustomPaceInput) {
     summaryCustomPaceInput.oninput = () => {
-      if (!summaryPaceSelect || summaryPaceSelect.value !== 'custom') return;
+      if (!customModeActive) return;
       const custom = Math.max(0.5, Math.min(8, Number(summaryCustomPaceInput.value) || 2));
       paceInput.value = custom.toFixed(1);
       recalc();
@@ -1996,14 +2068,18 @@ function renderPrivacyState() {
 function buildCredibleNotes(geo, weather, verdict, selectedDate = '') {
   const notes = [];
   const place = `${geo?.name || 'This location'}${geo?.sub ? ` (${geo.sub})` : ''}`;
+  const createdAt = getStoredResultCreatedAt();
+  const ageText = createdAt
+    ? `${Math.max(0, Math.round((Date.now() - createdAt) / 60000))} minute(s) old`
+    : 'age unknown';
 
-  notes.push(`Forecast data source: Open-Meteo for ${place}.`);
+  notes.push(`Forecast data source: Open-Meteo for ${place}; current result is ${ageText}.`);
   notes.push('Location matching uses Open-Meteo geocoding and may occasionally resolve to a nearby place instead of the exact trailhead.');
   if (selectedDate) {
     notes.push(`Planned hike date: ${formatSelectedDate(selectedDate)}.`);
   }
-  notes.push(`Current safety verdict: ${verdict.toUpperCase()} from a simple rules-based check using weather fields such as temperature, precipitation, wind, UV, and elevation.`);
-  notes.push('These notes are automated summaries, not official trail reports, ranger advice, or a guarantee of on-trail conditions.');
+  notes.push(`Current safety verdict: ${verdict.toUpperCase()} from a transparent rules-based check using temperature, precipitation, wind, UV, and elevation.`);
+  notes.push('These notes are automated summaries, not official trail reports, ranger instructions, or a guarantee of on-trail conditions.');
   notes.push('External links are provided for additional research only. Review quality and accuracy vary by source.');
 
   return notes;

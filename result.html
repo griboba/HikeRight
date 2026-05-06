@@ -129,15 +129,16 @@
       <div class="hike-summary-box">
         <p class="recommend-title">Hike Length and Time</p>
         <div class="summary-controls">
-          <label for="summaryPaceSelect">Select your moving pace</label>
-          <div class="summary-pace-row">
-            <select id="summaryPaceSelect">
-              <option value="walking" selected>Walking (2.0 mph)</option>
-              <option value="jogging">Jogging (3.5 mph)</option>
-              <option value="running">Running (5.0 mph)</option>
-              <option value="sprinting">Sprinting (7.0 mph)</option>
-              <option value="custom">Custom</option>
-            </select>
+          <label>Select your moving pace</label>
+          <div id="summaryPaceButtons" class="pace-buttons" role="group" aria-label="Pace presets">
+            <button type="button" class="pace-btn active" data-pace="walking" data-mph="2.0">Walking</button>
+            <button type="button" class="pace-btn" data-pace="jogging" data-mph="3.5">Jogging</button>
+            <button type="button" class="pace-btn" data-pace="running" data-mph="5.0">Running</button>
+            <button type="button" class="pace-btn" data-pace="sprinting" data-mph="7.0">Sprinting</button>
+            <button type="button" class="pace-btn" data-pace="custom">Custom</button>
+          </div>
+          <div class="summary-custom-wrap">
+            <label for="summaryCustomPaceInput">Custom pace (mph)</label>
             <input id="summaryCustomPaceInput" type="number" min="0.5" max="8" step="0.1" value="2.0" disabled aria-label="Custom pace in mph" />
           </div>
         </div>
@@ -240,7 +241,7 @@
               <label for="distanceMilesInput">Planned trail distance (miles)</label>
               <input id="distanceMilesInput" type="number" min="0.5" max="80" value="6" step="0.5" />
               <label for="paceMphInput">Average moving pace (mph)</label>
-              <input id="paceMphInput" type="number" min="0.5" max="5" value="2" step="0.1" />
+              <input id="paceMphInput" type="number" min="0.5" max="8" value="2" step="0.1" />
             </div>
             <div class="recommend-box">
               <div class="recommend-grid">
@@ -319,6 +320,10 @@
           <div class="reviews-section">
             <h3>Weather Sources And External Links</h3>
             <p class="reviews-note">These are automated weather-data notes plus external links that may help with trip research. HikeRight does not verify or endorse third-party reviews or listings.</p>
+            <div id="credibilityPanel" class="credibility-panel">
+              <h4>Credibility Checklist</h4>
+              <ul id="credibilityChecksUl"></ul>
+            </div>
             <div id="reviewLinks" class="review-links"></div>
             <ul id="placeReviewsUl"></ul>
           </div>
